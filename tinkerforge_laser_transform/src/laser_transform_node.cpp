@@ -1,7 +1,8 @@
 #include <iostream>
 #include "ros/ros.h"
-#include "std_msgs/String.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/NavSatFix.h"
+#include "sensor_msgs/Imu.h"
 #include "laser_transform_core.h"
 
 using std::string;
@@ -13,8 +14,12 @@ int main (int argc, char **argv)
  
   // Declare variables thar can be modified by launch file or command line.
   int rate;
-  string sub_topic;
-  string pub_topic;
+  bool imu_msgs;
+  bool gps_msgs;
+  string pcl_in_topic;
+  string pcl_out_topic;
+  string imu_topic;
+  string gps_topic;
  
   // Create a new LaserTransformer object.
   LaserTransform *node_lt = new LaserTransform();
@@ -24,20 +29,34 @@ int main (int argc, char **argv)
   // while using different parameters.
   ros::NodeHandle private_node_handle_("~");
   private_node_handle_.param("rate", rate, int(10));
-  private_node_handle_.param("sub_topic", sub_topic, string("/cloud"));
-  private_node_handle_.param("pub_topic", pub_topic, string("/cloud_world"));
+  private_node_handle_.param("imu_msgs", imu_msgs, bool(false));
+  private_node_handle_.param("gps_msgs", gps_msgs, bool(false));
+  private_node_handle_.param("pcl_in_topic", pcl_in_topic, string("/cloud"));
+  private_node_handle_.param("pcl_out_topic", pcl_out_topic, string("/cloud_world"));
+  private_node_handle_.param("imu_topic", imu_topic, string("/imu/data"));
+  private_node_handle_.param("gps_topic", gps_topic, string("/gps/fix"));
 
   // Create a subscriber
-  ros::Subscriber sub_message = n.subscribe(sub_topic.c_str(), 1000, &LaserTransform::messageCallback, node_lt);
+  ros::Subscriber sub_message = n.subscribe(pcl_in_topic.c_str(), 1000, &LaserTransform::messageCallback, node_lt);
 
   // Create a publisher and name the topic
-  ros::Publisher pub_message = n.advertise<sensor_msgs::PointCloud2>(pub_topic.c_str(), 50);
+  ros::Publisher pub_message = n.advertise<sensor_msgs::PointCloud2>(pcl_out_topic.c_str(), 50);
+
+  // Create a publisher for IMU msgs
+  ros::Publisher imu_pub = n.advertise<sensor_msgs::Imu>(imu_topic.c_str(), 50);
+
+  // Create a publisher for GPS msgs
+  ros::Publisher gps_pub = n.advertise<sensor_msgs::NavSatFix>(gps_topic.c_str(), 50);
 
   ros::Rate r(rate);
 
   while (n.ok())
   {
     node_lt->publishMessage(&pub_message);
+    if (imu_msgs)
+      node_lt->publishImuMessage(&imu_pub);
+    if (gps_msgs)
+      node_lt->publishNavSatFixMessage(&gps_pub);
     ros::spinOnce();
     r.sleep();
   }
