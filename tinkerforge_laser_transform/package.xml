@@ -4,7 +4,9 @@
   <version>0.1.0</version>
   <description>Subscribe pcl data from laserscanner and transform it with tinkerforge imu orientation to new pcl</description>
   <maintainer email="fischerm@htw-dresden.de">M. Fischer</maintainer>
+  <author>M.Fischer</author>
   <license>MIT</license>
+  <url>http://wiki.ros.org/tinkerforge_laser_transform</url>
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
