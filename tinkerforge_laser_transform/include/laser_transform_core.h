@@ -9,6 +9,7 @@
 #include "ip_connection.h"
 #include "brick_imu.h"
 #include "bricklet_gps.h"
+#include "bricklet_industrial_dual_0_20ma.h"
 
 class LaserTransform
 {
@@ -24,6 +25,12 @@ public:
 
   //! Publish the message.
   void publishMessage(ros::Publisher *pub_message);
+
+  //! Publish the IMU message.
+  void publishImuMessage(ros::Publisher *pub_message);
+
+  //! Publish the NavSatFix message.
+  void publishNavSatFixMessage(ros::Publisher *pub_message);
 
   //! Callcack function for subscriber.
   void messageCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
@@ -42,6 +49,8 @@ private:
   
   //! Get position
   int getPosition(float *x_pos, float *y_pos, float *z_pos);
+  //! Get velocity
+  int getVelocity(float *velocity);
 private:
   //! IP connection to Tinkerforge deamon.
   IPConnection ipcon;
@@ -53,6 +62,8 @@ private:
   GPS gps;
   //! The GPS state.
   bool is_gps_connected;
+  //! The IndustrialDual020mA device.
+  IndustrialDual020mA dual020;
   //! yaw angle.
   float yaw;
   //! pitch angle.
@@ -61,6 +72,12 @@ private:
   float roll;
   sensor_msgs::PointCloud2 pcl_out;
   bool publish_new_pcl;
+  //! start latitude
+  double start_latitude;
+  //! start longitude
+  double start_longitude;
+  //! laser scanner orientation
+  tf::Quaternion laser_orientation;
 };
 
 #endif
