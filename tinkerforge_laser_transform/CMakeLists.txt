@@ -115,6 +115,7 @@ add_executable(
   src/ip_connection.cpp
   src/brick_imu.cpp
   src/bricklet_gps.c
+  src/bricklet_industrial_dual_0_20ma.c
 )
 
 ## Add cmake target dependencies of the executable/library
@@ -124,6 +125,7 @@ add_executable(
 ## Specify libraries to link a library or executable target against
 target_link_libraries(tinkerforge_laser_transform_node
   ${catkin_LIBRARIES}
+  m
 )
 
 #############
