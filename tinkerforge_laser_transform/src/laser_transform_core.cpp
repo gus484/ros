@@ -5,20 +5,27 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/NavSatFix.h"
 #include "sensor_msgs/Imu.h"
+#include "nav_msgs/Odometry.h"
 #include "ip_connection.h"
 #include "brick_imu.h"
 #include "bricklet_gps.h"
 #include "bricklet_industrial_dual_0_20ma.h"
 
-#define HOST "141.56.161.43"
+#define HOST "localhost"
+//#define HOST "141.56.161.43"
 //#define HOST 	"192.168.0.55"
 #define PORT 	4223
 
 #define M_PI	3.14159265358979323846  /* pi */
+#define DUAL_SENSOR 0
+#define DUAL_OPT INDUSTRIAL_DUAL_0_20MA_THRESHOLD_OPTION_GREATER
+#define DUAL_MIN 10 * 1000000
+#define DUAL_MAX 10 * 1000000
+#define DUAL_NUM_OF_MAGNETS 4
 
 /*----------------------------------------------------------------------
  * LaserTransform()
- * Constructor
+ * Constructor 
  *--------------------------------------------------------------------*/
 
 LaserTransform::LaserTransform()
@@ -26,8 +33,10 @@ LaserTransform::LaserTransform()
   publish_new_pcl = false;
   is_imu_connected = false;
   is_gps_connected = false;
+  is_dual020_connected = false;
   start_latitude = 0;
   start_longitude = 0;
+  dual020_trigger_cnt = 0;
 
   laser_orientation.setEuler(0,0,-1.57079633);
 }
@@ -89,6 +98,15 @@ void LaserTransform::publishMessage(ros::Publisher *pub_message)
     pub_message->publish(pcl_out);
     publish_new_pcl = false;
   }
+}
+
+/*----------------------------------------------------------------------
+ * odometryCallback()
+ * Callback function for filtered odometry.
+ *--------------------------------------------------------------------*/
+void LaserTransform::odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
+{
+  return;
 }
 
 /*----------------------------------------------------------------------
@@ -174,7 +192,8 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
 
     gps_msg.latitude = latitude/1000000.0;
     gps_msg.longitude = longitude/1000000.0;
-    gps_msg.altitude = altitude;
+    //gps_msg.altitude = altitude/100.0;
+    gps_msg.altitude = 0.0;
     gps_msg.position_covariance_type = gps_msg.COVARIANCE_TYPE_UNKNOWN;
 
     pub_message->publish(gps_msg);
@@ -259,7 +278,49 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
     ROS_INFO_STREAM("found ID20MA with UID:" << uid);
     // Create IndustrialDual020mA device object
     industrial_dual_0_20ma_create(&(lt->dual020), uid, &(lt->ipcon));
+    // Get threshold callbacks with a debounce time of 10 seconds (10000ms)
+    industrial_dual_0_20ma_set_debounce_period(&(lt->dual020), 20);
+
+    // Register threshold reached callback to function cb_reached
+
+    industrial_dual_0_20ma_register_callback(&(lt->dual020),
+      INDUSTRIAL_DUAL_0_20MA_CALLBACK_CURRENT_REACHED,
+      (void*)dual020Callback,
+      NULL);
+
+    industrial_dual_0_20ma_set_debounce_period(&(lt->dual020),20);
+
+    industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
+      DUAL_SENSOR, DUAL_OPT, DUAL_MIN, DUAL_MAX);
+    lt->is_dual020_connected = true;
   }
+}
+
+/*----------------------------------------------------------------------
+ * dual020Callback()
+ * Callback function for Tinkerforge Industrial Dual 0-20mA Bricklet
+ *--------------------------------------------------------------------*/
+
+void LaserTransform::dual020Callback(uint8_t sensor, int32_t current, void *user_data)
+{
+  LaserTransform *lt = (LaserTransform*) user_data;
+  static ros::Time begin = ros::Time::now();
+  static int cnt = 0;
+  ROS_INFO_STREAM(current);
+  //lt->dual020_trigger_cnt++;
+  cnt++;
+
+  if ((ros::Time::now().sec - begin.sec) >= 1)
+  {
+    // calc rounds per minute
+    //ROS_INFO_STREAM("Rounds per minute:" << lt->dual020_trigger_cnt / DUAL_NUM_OF_MAGNETS);
+    ROS_INFO_STREAM("Rounds per minute:" << cnt / DUAL_NUM_OF_MAGNETS);
+
+    //lt->dual020_trigger_cnt = 0;
+	cnt = 0;
+    begin = ros::Time::now();
+  }
+  return;
 }
 
 /*----------------------------------------------------------------------
