@@ -3,6 +3,7 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/NavSatFix.h"
 #include "sensor_msgs/Imu.h"
+#include "nav_msgs/Odometry.h"
 #include "laser_transform_core.h"
 
 using std::string;
@@ -20,6 +21,7 @@ int main (int argc, char **argv)
   string pcl_out_topic;
   string imu_topic;
   string gps_topic;
+  //string odo_topic;
  
   // Create a new LaserTransformer object.
   LaserTransform *node_lt = new LaserTransform();
@@ -38,6 +40,9 @@ int main (int argc, char **argv)
 
   // Create a subscriber
   ros::Subscriber sub_message = n.subscribe(pcl_in_topic.c_str(), 1000, &LaserTransform::messageCallback, node_lt);
+
+  // Create odometry subscriber
+  ros::Subscriber sub_odometry = n.subscribe("/odometry/filtered", 50, &LaserTransform::odometryCallback, node_lt);
 
   // Create a publisher and name the topic
   ros::Publisher pub_message = n.advertise<sensor_msgs::PointCloud2>(pcl_out_topic.c_str(), 50);
