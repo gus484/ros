@@ -6,6 +6,7 @@
 #include "ros/time.h"
 #include "pcl_ros/transforms.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "nav_msgs/Odometry.h"
 #include "ip_connection.h"
 #include "brick_imu.h"
 #include "bricklet_gps.h"
@@ -34,6 +35,9 @@ public:
 
   //! Callcack function for subscriber.
   void messageCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
+
+  //! Callback function for odometry
+  void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 private:
   //! Callback function for Tinkerforge ip connected .
   static void connectedCallback(uint8_t connect_reason, void *user_data);
@@ -43,6 +47,9 @@ private:
     char position, uint8_t hardware_version[3],
     uint8_t firmware_version[3], uint16_t device_identifier,
     uint8_t enumeration_type, void *user_data);
+
+  //! Callback function for Tinkerforge Industrial Dual 0-20mA Bricklet
+   static void dual020Callback(uint8_t sensor, int32_t current, void *user_data);
 
   //! Get IMU quaternion.
   tf::Quaternion getQuaternion();
@@ -64,6 +71,10 @@ private:
   bool is_gps_connected;
   //! The IndustrialDual020mA device.
   IndustrialDual020mA dual020;
+  //! The IndustrialDual020mA state.
+  bool is_dual020_connected;
+  //! Counter for IndustrialDual020mA triggers.
+  uint32_t dual020_trigger_cnt;
   //! yaw angle.
   float yaw;
   //! pitch angle.
