@@ -9,6 +9,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   sensor_msgs
+  geographic_msgs
+  geometry_msgs
+  geodesy
   tf
   pcl_ros
 )
