@@ -8,6 +8,7 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/NavSatFix.h"
 #include "sensor_msgs/Imu.h"
+#include "sensor_msgs/MagneticField.h"
 #include "nav_msgs/Odometry.h"
 #include <geodesy/wgs84.h>
 #include <geodesy/utm.h>
@@ -136,16 +137,6 @@ void LaserTransform::publishPclMessage(ros::Publisher *pub_message)
 }
 
 /*----------------------------------------------------------------------
- * odometryCallback()
- * Callback function for filtered odometry.
- *--------------------------------------------------------------------*/
-void LaserTransform::odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
-{
-  //msg.pose.pose.point.x
-  return;
-}
-
-/*----------------------------------------------------------------------
  * publishImuMessage()
  * Publish the Imu message.
  *--------------------------------------------------------------------*/
@@ -170,7 +161,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     float yaw   =  atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
     float pitch = -asin(2.0*(w*y - x*z));
     float roll  = -atan2(2.0*(y*z + w*x), -(pow(w,2)-pow(x,2)-pow(y,2)+pow(z,2)));
-1
+
     tf::Quaternion q;
     q.setEuler(yaw, pitch, roll);
     */
@@ -192,20 +183,55 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
 
     imu_msg.orientation_covariance[0] = -1;
 
-    imu_msg.angular_velocity.x = ang_x;
-    imu_msg.angular_velocity.y = ang_y;
-    imu_msg.angular_velocity.z = ang_z;
+    // velocity from °/14.375 to rad/s
+    imu_msg.angular_velocity.x = deg2rad(ang_x/14.375);
+    imu_msg.angular_velocity.y = deg2rad(ang_y/14.375);
+    imu_msg.angular_velocity.z = deg2rad(ang_z/14.375);
     imu_msg.angular_velocity_covariance[0] = -1;
 
-    imu_msg.linear_acceleration.x = acc_x;
-    imu_msg.linear_acceleration.y = acc_y;
-    imu_msg.linear_acceleration.z = acc_z;
+    // acceleration from mG to m/s²
+    imu_msg.linear_acceleration.x = (acc_x/1000.0)*9,80605;
+    imu_msg.linear_acceleration.y = (acc_y/1000.0)*9,80605;
+    imu_msg.linear_acceleration.z = (acc_z/1000.0)*9,80605;
     imu_msg.linear_acceleration_covariance[0] = -1;
 
     pub_message->publish(imu_msg);
 
     seq++;
   }
+}
+
+/*----------------------------------------------------------------------
+ * publishMagneticFieldMessage()
+ * Publish the MagneticField message.
+ *--------------------------------------------------------------------*/
+
+void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
+{
+  static uint32_t seq = 0;
+  if (is_imu_connected)
+  {
+	int16_t x = 0, y = 0, z = 0;
+	imu_get_magnetic_field(&imu, &x, &y, &z);
+
+	sensor_msgs::MagneticField mf_msg;
+
+    // message header
+    mf_msg.header.seq =  seq;
+    mf_msg.header.stamp = ros::Time::now();
+    mf_msg.header.frame_id = "/world";
+
+    // magnetic field from mG to T
+    mf_msg.magnetic_field.x = x/10000000.0;
+    mf_msg.magnetic_field.x = y/10000000.0;
+    mf_msg.magnetic_field.x = z/10000000.0;
+
+    for (int i = 0 ; i < 9 ; i++)
+      mf_msg.magnetic_field_covariance[i] = 0;
+
+    seq++;
+  }
+  return;
 }
 
 /*----------------------------------------------------------------------
