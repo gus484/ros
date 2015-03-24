@@ -36,11 +36,11 @@ public:
   //! Publish the NavSatFix message.
   void publishNavSatFixMessage(ros::Publisher *pub_message);
 
+  //! Publish the MagneticField message
+  void publishMagneticFieldMessage(ros::Publisher *pub_message);
+
   //! Callcack function for laser scanner pcl.
   void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
-
-  //! Callback function for odometry
-  void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 public:
   //! IMU convergence_speed setter
   int setImuConvergenceSpeed(uint16_t imu_convergence_speed)
@@ -73,6 +73,10 @@ private:
   float rad2deg(float x)
   {
     return x*180.0/M_PI;
+  }
+  float deg2rad(float x)
+  {
+    return x*M_PI/180.0;
   }
 private:
   //! IP connection to Tinkerforge deamon.
