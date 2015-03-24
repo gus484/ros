@@ -2,6 +2,7 @@
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/NavSatFix.h"
+#include "sensor_msgs/MagneticField.h"
 #include "sensor_msgs/Imu.h"
 #include "nav_msgs/Odometry.h"
 #include "laser_transform_core.h"
@@ -17,9 +18,11 @@ int main (int argc, char **argv)
   int rate;
   int imu_convergence_speed;
   bool imu_msgs;
+  bool mf_msgs;
   bool gps_msgs;
   string pcl_in_topic;
   string pcl_out_topic;
+  string mf_topic;
   string imu_topic;
   string gps_topic;
   //string odo_topic;
@@ -32,22 +35,24 @@ int main (int argc, char **argv)
   // while using different parameters.
   ros::NodeHandle private_node_handle_("~");
   private_node_handle_.param("rate", rate, int(10));
+  private_node_handle_.param("mf_msgs", mf_msgs, bool(true));
   private_node_handle_.param("imu_msgs", imu_msgs, bool(true));
   private_node_handle_.param("gps_msgs", gps_msgs, bool(false));
   private_node_handle_.param("pcl_in_topic", pcl_in_topic, string("/cloud"));
   private_node_handle_.param("pcl_out_topic", pcl_out_topic, string("/cloud_world"));
+  private_node_handle_.param("mf_topic", mf_topic, string("magnetic/data"));
   private_node_handle_.param("imu_topic", imu_topic, string("/imu/data"));
   private_node_handle_.param("gps_topic", gps_topic, string("/gps/fix"));
   private_node_handle_.param("imu_convergence_speed", imu_convergence_speed, int(20));
 
-  // Create a subscriber
+  // Create a subscriber for laser scanner plc data
   ros::Subscriber sub_message = n.subscribe(pcl_in_topic.c_str(), 1000, &LaserTransform::pclCallback, node_lt);
 
-  // Create odometry subscriber
-  ros::Subscriber sub_odometry = n.subscribe("/odometry/filtered", 50, &LaserTransform::odometryCallback, node_lt);
-
-  // Create a publisher and name the topic
+  // Create a publisher for transformed plc msgs
   ros::Publisher pub_message = n.advertise<sensor_msgs::PointCloud2>(pcl_out_topic.c_str(), 50);
+
+  // Create a publisher for magnetic field msgs
+  ros::Publisher mf_pub = n.advertise<sensor_msgs::MagneticField>(mf_topic.c_str(), 50);
 
   // Create a publisher for IMU msgs
   ros::Publisher imu_pub = n.advertise<sensor_msgs::Imu>(imu_topic.c_str(), 50);
@@ -64,6 +69,8 @@ int main (int argc, char **argv)
       node_lt->publishImuMessage(&imu_pub);
     if (gps_msgs)
       node_lt->publishNavSatFixMessage(&gps_pub);
+    if (mf_msgs)
+      node_lt->publishMagneticFieldMessage(&mf_pub);
     ros::spinOnce();
     r.sleep();
   }
