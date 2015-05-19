@@ -118,7 +118,7 @@ add_executable(
   src/ip_connection.cpp
   src/brick_imu.cpp
   src/bricklet_gps.c
-  src/bricklet_industrial_dual_0_20ma.c
+  src/bricklet_industrial_digital_in_4.c
 )
 
 ## Add cmake target dependencies of the executable/library

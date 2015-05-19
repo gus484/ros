@@ -11,7 +11,7 @@
 #include "ip_connection.h"
 #include "brick_imu.h"
 #include "bricklet_gps.h"
-#include "bricklet_industrial_dual_0_20ma.h"
+#include "bricklet_industrial_digital_in_4.h"
 
 #define M_PI	3.14159265358979323846  /* pi */
 
@@ -39,6 +39,9 @@ public:
   //! Publish the MagneticField message
   void publishMagneticFieldMessage(ros::Publisher *pub_message);
 
+  //! Publish the current car velocity
+  void publishOdometryMessage(ros::Publisher *pub_message);
+
   //! Callcack function for laser scanner pcl.
   void pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
 public:
@@ -58,17 +61,14 @@ private:
     uint8_t firmware_version[3], uint16_t device_identifier,
     uint8_t enumeration_type, void *user_data);
 
-  //! Callback function for Tinkerforge Industrial Dual 0-20mA Bricklet
-   static void dual020Callback(uint8_t sensor, int32_t current, void *user_data);
+  //! Callback function for Tinkerforge Industrial Digital In 4 Bricklet
+   static void idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, void *user_data);
 
   //! Get IMU quaternion.
   tf::Quaternion getQuaternion();
 
   //! Get current car position
   int getPosition(float *x_pos, float *y_pos, float *z_pos);
-
-  //! Get current car velocity
-  int getVelocity(float *velocity);
   //! Calculate deg from rad
   float rad2deg(float x)
   {
@@ -92,12 +92,13 @@ private:
   //! The GPS state.
   bool is_gps_connected;
   //! The IndustrialDual020mA device.
-  IndustrialDual020mA dual020;
+  IndustrialDigitalIn4 idi4;
   //! The IndustrialDual020mA state.
-  bool is_dual020_connected;
-  //! Counter for IndustrialDual020mA triggers.
-  uint32_t dual020_trigger_cnt_c1;
-  uint32_t dual020_trigger_cnt_c2;
+  bool is_idi4_connected;
+  //! The rev from the inductive proximity switch sensor
+  float rev;
+  //! Time since the last rev
+  ros::Time last_rev;
   //! yaw angle.
   float yaw;
   //! pitch angle.
@@ -119,8 +120,14 @@ private:
   int ypos;
   //! The current vehicle velocity
   float velocity;
+  //! The current vehicle velocity
+  float velocity_gps;
+  //!
+  float course_gps;
   //! GPS-Logfile
   std::fstream gps_log;
+  //! The serial connection to the velocity sensor
+  int fd_velocity;
 };
 
 #endif

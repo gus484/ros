@@ -2,6 +2,11 @@
 #include <sstream>
 #include <fstream>
 #include <cmath>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
 #include "ros/ros.h"
 #include "laser_transform_core.h"
 #include "pcl_ros/transforms.h"
@@ -16,19 +21,12 @@
 #include "ip_connection.h"
 #include "brick_imu.h"
 #include "bricklet_gps.h"
-#include "bricklet_industrial_dual_0_20ma.h"
+#include "bricklet_industrial_digital_in_4.h"
 
 #define HOST "localhost"
 //#define HOST "141.56.161.43"
 //#define HOST 	"192.168.0.55"
 #define PORT 	4223
-
-#define DUAL_SENSOR1 0
-#define DUAL_SENSOR2 1
-#define DUAL_OPT INDUSTRIAL_DUAL_0_20MA_THRESHOLD_OPTION_GREATER
-#define DUAL_MIN 10 * 1000000
-#define DUAL_MAX 10 * 1000000
-#define DUAL_NUM_OF_MAGNETS 1
 
 #define GPS_LOGFILE true
 #define LOGFILE_PATH "/home/vmuser/logs/"
@@ -43,17 +41,52 @@ LaserTransform::LaserTransform()
   publish_new_pcl = false;
   is_imu_connected = false;
   is_gps_connected = false;
-  is_dual020_connected = false;
+  is_idi4_connected = false;
   start_latitude = 0;
   start_longitude = 0;
   velocity = 0.0;
-  dual020_trigger_cnt_c1 = 0;
-  dual020_trigger_cnt_c2 = 0;
+  velocity_gps = 0.0;
   imu_convergence_speed = 0;
+  rev = 0.0;
+  last_rev = ros::Time::now();
 
   xpos = ypos = 0;
   // set laser scanner orientation to imu orientation
   laser_orientation.setRPY(-90*M_PI/180.0,0,0);
+
+  fd_velocity = 0;
+  // open serial connection to velocity sensor
+  /*
+  if ((fd_velocity = open(VELOCITY_CON, O_RDWR | O_NOCTTY | O_NDELAY)) != -1)
+  {
+    struct termios toptions;
+    cfsetispeed(&toptions, B9600);
+    cfsetospeed(&toptions, B9600);
+
+    // 8N1
+    toptions.c_cflag &= ~PARENB;
+    toptions.c_cflag &= ~CSTOPB;
+    toptions.c_cflag &= ~CSIZE;
+    toptions.c_cflag |= CS8;
+    // no flow control
+    toptions.c_cflag &= ~CRTSCTS;
+
+    toptions.c_cflag |= CREAD | CLOCAL;  // turn on READ & ignore ctrl lines
+    toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
+
+    toptions.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // make raw
+    toptions.c_oflag &= ~OPOST; // make raw
+
+    // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
+    toptions.c_cc[VMIN]  = 0;
+    toptions.c_cc[VTIME] = 20;
+    
+    if( tcsetattr(fd_velocity, TCSANOW, &toptions) < 0) {
+        perror("init_serialport: Couldn't set term attributes");
+        fd_velocity = -1;
+    }
+  }
+  */
 
   // open gps log file
   if (GPS_LOGFILE)
@@ -90,6 +123,9 @@ LaserTransform::~LaserTransform()
   // close gps logfile
   if (gps_log.is_open())
     gps_log.close();
+  // close serial connection
+  if (fd_velocity != -1)
+   close(fd_velocity);
 }
 
 /*----------------------------------------------------------------------
@@ -101,6 +137,12 @@ int LaserTransform::init()
 {
   // create IP connection
   ipcon_create(&ipcon);
+
+  // connect to brickd
+  if(ipcon_connect(&ipcon, HOST, PORT) < 0) {
+    std::cout << "could not connect to brickd!" << std::endl;
+    return false;
+  }
 
   // register connected callback to "cb_connected"
   ipcon_register_callback(&ipcon,
@@ -114,11 +156,6 @@ int LaserTransform::init()
     (void*)enumerateCallback,
     this);
 
-  // connect to brickd
-  if(ipcon_connect(&ipcon, HOST, PORT) < 0) {
-    std::cout << "could not connect to brickd!" << std::endl;
-    return false;
-  }
   return 0;
 }
 
@@ -246,6 +283,7 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
   uint16_t pdop, hdop, vdop, epe;
   uint32_t latitude, longitude;
   uint32_t altitude, geoidal_separation;
+  uint32_t course, speed;
   char ns, ew;
   if (is_gps_connected)
   {
@@ -258,6 +296,21 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
     gps_get_coordinates(&gps, &latitude, &ns, &longitude, &ew, &pdop,
       &hdop, &vdop, &epe);
     gps_get_altitude(&gps, &altitude, &geoidal_separation);
+    // course in deg, speed in 1/100 km/h
+    gps_get_motion(&gps, &course, &speed);
+
+    if (this->velocity > 0.0)
+    {
+      this->velocity_gps = (speed*100) / 3.6; // in m/s²
+      this->course_gps = deg2rad(course*100);
+      ROS_INFO_STREAM("GPS-Velocity:" << this->velocity_gps);
+      ROS_INFO_STREAM("GPS-Course:" << this->course_gps);
+    }
+    else
+    {
+      this->velocity_gps = 0.0;
+      this->course_gps = 0.0;
+    }
 
     sensor_msgs::NavSatFix gps_msg;
 
@@ -379,67 +432,77 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
     gps_create(&(lt->gps), uid, &(lt->ipcon));
     lt->is_gps_connected = true;
   }
-  else if (device_identifier == INDUSTRIAL_DUAL_0_20MA_DEVICE_IDENTIFIER)
+  else if (device_identifier == INDUSTRIAL_DIGITAL_IN_4_DEVICE_IDENTIFIER)
   {
-    ROS_INFO_STREAM("found ID20MA with UID:" << uid);
-    // Create IndustrialDual020mA device object
-    industrial_dual_0_20ma_create(&(lt->dual020), uid, &(lt->ipcon));
+    ROS_INFO_STREAM("found IDI4 with UID:" << uid);
+    // Create IndustrialDigitalIn4 device object
+    industrial_digital_in_4_create(&(lt->idi4), uid, &(lt->ipcon)); 
+
     // Get threshold callbacks with a debounce time of 20ms
-    industrial_dual_0_20ma_set_debounce_period(&(lt->dual020), lt->imu_convergence_speed);
+    //industrial_dual_0_20ma_set_debounce_period(&(lt->dual020), lt->imu_convergence_speed);
 
     // Register threshold reached callback to function cb_reached
 
-    industrial_dual_0_20ma_register_callback(&(lt->dual020),
-      INDUSTRIAL_DUAL_0_20MA_CALLBACK_CURRENT_REACHED,
-      (void*)dual020Callback,
+    industrial_digital_in_4_register_callback(&(lt->idi4),
+      INDUSTRIAL_DIGITAL_IN_4_CALLBACK_INTERRUPT,
+      (void*)idi4Callback,
       lt);
 
-    industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
-      DUAL_SENSOR1, DUAL_OPT, DUAL_MIN, DUAL_MAX);
-    industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
-      DUAL_SENSOR2, DUAL_OPT, DUAL_MIN, DUAL_MAX);
+    // Enable interrupt on pin 0
+    industrial_digital_in_4_set_interrupt(&(lt->idi4), 1 << 0);
+
+    //industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
+    //  DUAL_SENSOR1, DUAL_OPT, DUAL_MIN, DUAL_MAX);
+    //industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
+    //  DUAL_SENSOR2, DUAL_OPT, DUAL_MIN, DUAL_MAX);
 
     // set sample rate for sensors
-    industrial_dual_0_20ma_set_sample_rate(&(lt->dual020),
-      INDUSTRIAL_DUAL_0_20MA_SAMPLE_RATE_240_SPS);
-    lt->is_dual020_connected = true;
+    //industrial_dual_0_20ma_set_sample_rate(&(lt->dual020),
+    //  INDUSTRIAL_DUAL_0_20MA_SAMPLE_RATE_240_SPS);
+    lt->is_idi4_connected = true;
   }
 }
 
 /*----------------------------------------------------------------------
- * dual020Callback()
- * Callback function for Tinkerforge Industrial Dual 0-20mA Bricklet
+ * idi4Callback()
+ * Callback function for Tinkerforge Industrial Digital In 4 Bricklet
  *--------------------------------------------------------------------*/
 
-void LaserTransform::dual020Callback(uint8_t sensor, int32_t current, void *user_data)
+void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, void *user_data)
 {
   LaserTransform *lt = (LaserTransform*) user_data;
-  static ros::Time begin = ros::Time::now();
-  static int cnt_c1 = 0, cnt_c2 = 0;
-  //ROS_INFO_STREAM(current);
+  static ros::Time begin = ros::Time(0,0);
 
-  if (sensor == 0)
-  {
-    cnt_c1++;
-    //lt->dual020_trigger_cnt_c1++;
-  }
-  else
-  {
-    cnt_c2++;
-    //lt->dual020_trigger_cnt_c2++;
-  }
+  // check if correct input channel
+  if (interrupt_mask != 0x1)
+    return;
 
-  if ((ros::Time::now().sec - begin.sec) >= 1)
-  {
-    // calc rounds per minute
-    //ROS_INFO_STREAM("Rounds per minute:" << lt->dual020_trigger_cnt / DUAL_NUM_OF_MAGNETS);
-    ROS_INFO_STREAM("Sensor 1:" << cnt_c1 / DUAL_NUM_OF_MAGNETS << " U/Sek" << "::" << cnt_c1);
-    ROS_INFO_STREAM("Sensor 2:" << cnt_c2 / DUAL_NUM_OF_MAGNETS << " U/Sek" << "::" << cnt_c2);
+  // check for falling edge (ignore)
+  if (interrupt_mask == 0x1 && value_mask == 0x0)
+    return;
 
-    //lt->dual020_trigger_cnt_c1 = 0;
-    //lt->dual020_trigger_cnt_c2 = 0;
-	cnt_c1 = cnt_c2 = 0;
+  if (begin.sec == 0)
     begin = ros::Time::now();
+  else {
+    ros::Time end = ros::Time::now();
+    // calculate rev
+    float diff = (end.sec* 1000 + end.nsec / 1000000) - (begin.sec * 1000 + begin.nsec / 1000000);
+
+    // check if vehicle is moving
+    if (diff < 3000) 
+    {
+      lt->rev = 1000.0/diff;
+      //ROS_INFO_STREAM("Zeit End:" << end.sec << "::" << end.nsec);
+      //ROS_INFO_STREAM("Zeit Start:" << begin.sec << "::" << begin.nsec);
+      //ROS_INFO_STREAM("Diff:" << diff << " ms");
+      ROS_INFO_STREAM("Drehzahl:" << lt->rev);
+    } else
+    {
+      ROS_INFO_STREAM("START");
+    }
+    
+    begin = ros::Time::now();
+    lt->last_rev = ros::Time::now();
   }
   return;
 }
@@ -472,13 +535,44 @@ tf::Quaternion LaserTransform::getQuaternion()
 
 /*----------------------------------------------------------------------
  * getVelocity()
- * get Velocity
+ * Read the velocity sensor from the serial connection
  *--------------------------------------------------------------------*/
 
-int LaserTransform::getVelocity(float *velocity)
+void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
 {
-  *velocity = 0.0;
-  return true;
+  static uint32_t seq = 0;
+  
+  // check if vehicle stand still, after 3 seconds without rev
+  if (ros::Time::now().sec - last_rev.sec >= 3) {
+    ROS_INFO_STREAM("STAND");  
+  }
+
+  this->velocity = 0;
+  
+  return;
+
+  nav_msgs::Odometry odo_msg;
+
+  // message header
+  odo_msg.header.seq =  seq;
+  odo_msg.header.stamp = ros::Time::now();
+  odo_msg.header.frame_id = "/world";
+
+  //odo_msg.child_header = "base_link";
+
+  odo_msg.pose.pose.position.x = 0;
+  odo_msg.pose.pose.position.y = 0;
+  odo_msg.pose.pose.position.z = 0;
+  
+  odo_msg.twist.twist.linear.x = 0;
+  odo_msg.twist.twist.angular.x = 0;
+
+  pub_message->publish(odo_msg);
+
+  seq++;
+
+  ROS_INFO_STREAM(this->velocity);  
+  return;
 }
 
 /*----------------------------------------------------------------------

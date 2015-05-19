@@ -20,12 +20,13 @@ int main (int argc, char **argv)
   bool imu_msgs;
   bool mf_msgs;
   bool gps_msgs;
+  bool odo_msgs;
   string pcl_in_topic;
   string pcl_out_topic;
   string mf_topic;
   string imu_topic;
   string gps_topic;
-  //string odo_topic;
+  string odo_topic;
 
   // Create a new LaserTransformer object.
   LaserTransform *node_lt = new LaserTransform();
@@ -38,11 +39,13 @@ int main (int argc, char **argv)
   private_node_handle_.param("mf_msgs", mf_msgs, bool(true));
   private_node_handle_.param("imu_msgs", imu_msgs, bool(true));
   private_node_handle_.param("gps_msgs", gps_msgs, bool(false));
+  private_node_handle_.param("odo_msgs", odo_msgs, bool(true));
   private_node_handle_.param("pcl_in_topic", pcl_in_topic, string("/cloud"));
   private_node_handle_.param("pcl_out_topic", pcl_out_topic, string("/cloud_world"));
   private_node_handle_.param("mf_topic", mf_topic, string("magnetic/data"));
   private_node_handle_.param("imu_topic", imu_topic, string("/imu/data"));
   private_node_handle_.param("gps_topic", gps_topic, string("/gps/fix"));
+  private_node_handle_.param("odo_topic", odo_topic, string("/odo/data"));
   private_node_handle_.param("imu_convergence_speed", imu_convergence_speed, int(20));
 
   // Create a subscriber for laser scanner plc data
@@ -59,6 +62,9 @@ int main (int argc, char **argv)
 
   // Create a publisher for GPS msgs
   ros::Publisher gps_pub = n.advertise<sensor_msgs::NavSatFix>(gps_topic.c_str(), 50);
+  
+  // Create a publisher for odometry mesgs
+  ros::Publisher odo_pub = n.advertise<nav_msgs::Odometry>(odo_topic.c_str(),50);
 
   ros::Rate r(rate);
 
@@ -71,6 +77,8 @@ int main (int argc, char **argv)
       node_lt->publishNavSatFixMessage(&gps_pub);
     if (mf_msgs)
       node_lt->publishMagneticFieldMessage(&mf_pub);
+    if (odo_msgs)
+      node_lt->publishOdometryMessage(&odo_pub);
     ros::spinOnce();
     r.sleep();
   }
