@@ -119,6 +119,7 @@ add_executable(
   src/brick_imu.cpp
   src/bricklet_gps.c
   src/bricklet_industrial_digital_in_4.c
+  src/bricklet_dual_button.c
 )
 
 ## Add cmake target dependencies of the executable/library

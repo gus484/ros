@@ -22,13 +22,16 @@
 #include "brick_imu.h"
 #include "bricklet_gps.h"
 #include "bricklet_industrial_digital_in_4.h"
+#include "bricklet_dual_button.h"
+#include <tf/transform_broadcaster.h>
 
 #define HOST "localhost"
 //#define HOST "141.56.161.43"
 //#define HOST 	"192.168.0.55"
 #define PORT 	4223
 
-#define GPS_LOGFILE true
+#define GPS_LOGFILE false
+#define VELO_LOGFILE true
 #define LOGFILE_PATH "/home/vmuser/logs/"
 
 /*----------------------------------------------------------------------
@@ -42,6 +45,8 @@ LaserTransform::LaserTransform()
   is_imu_connected = false;
   is_gps_connected = false;
   is_idi4_connected = false;
+  isMeasure = false;
+  new_pcl_filtered = false;
   start_latitude = 0;
   start_longitude = 0;
   velocity = 0.0;
@@ -52,59 +57,35 @@ LaserTransform::LaserTransform()
 
   xpos = ypos = 0;
   // set laser scanner orientation to imu orientation
-  laser_orientation.setRPY(-90*M_PI/180.0,0,0);
+  //laser_orientation.setRPY(-90*M_PI/180.0,20*M_PI/180.0,-25*M_PI/180.0);
+  laser_orientation.setRPY(deg2rad(-90),deg2rad(20),deg2rad(-25)); // test
 
-  fd_velocity = 0;
-  // open serial connection to velocity sensor
-  /*
-  if ((fd_velocity = open(VELOCITY_CON, O_RDWR | O_NOCTTY | O_NDELAY)) != -1)
-  {
-    struct termios toptions;
-    cfsetispeed(&toptions, B9600);
-    cfsetospeed(&toptions, B9600);
+  std::stringstream ss;
 
-    // 8N1
-    toptions.c_cflag &= ~PARENB;
-    toptions.c_cflag &= ~CSTOPB;
-    toptions.c_cflag &= ~CSIZE;
-    toptions.c_cflag |= CS8;
-    // no flow control
-    toptions.c_cflag &= ~CRTSCTS;
+  time_t t;
+  struct tm *ts;
+  char buff[80];
 
-    toptions.c_cflag |= CREAD | CLOCAL;  // turn on READ & ignore ctrl lines
-    toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
-
-    toptions.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // make raw
-    toptions.c_oflag &= ~OPOST; // make raw
-
-    // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
-    toptions.c_cc[VMIN]  = 0;
-    toptions.c_cc[VTIME] = 20;
-    
-    if( tcsetattr(fd_velocity, TCSANOW, &toptions) < 0) {
-        perror("init_serialport: Couldn't set term attributes");
-        fd_velocity = -1;
-    }
-  }
-  */
+  // build filename
+  t = time(NULL);
+  ts = localtime(&t);
 
   // open gps log file
   if (GPS_LOGFILE)
   {
-    std::stringstream ss;
-
-    time_t t;
-    struct tm *ts;
-    char buff[80];
-
-    // build filename
-    t = time(NULL);
-    ts = localtime(&t);
-
     strftime(buff, 80, "gps_log_%Y_%m_%d-%H_%M_%S.txt", ts);
     ss << LOGFILE_PATH << buff;
 
     gps_log.open(ss.str().c_str(), std::ios::out);
+  }
+
+  // open velocity log file
+  if (VELO_LOGFILE)
+  {
+    strftime(buff, 80, "velo_log_%Y_%m_%d-%H_%M_%S.txt", ts);
+    ss << LOGFILE_PATH << buff;
+
+    velo_log.open(ss.str().c_str(), std::ios::out);
   }
 }
 
@@ -123,9 +104,9 @@ LaserTransform::~LaserTransform()
   // close gps logfile
   if (gps_log.is_open())
     gps_log.close();
-  // close serial connection
-  if (fd_velocity != -1)
-   close(fd_velocity);
+  // close velo logfile
+  if (velo_log.is_open())
+    velo_log.close();
 }
 
 /*----------------------------------------------------------------------
@@ -169,6 +150,7 @@ void LaserTransform::publishPclMessage(ros::Publisher *pub_message)
   if (publish_new_pcl)
   {
     pub_message->publish(pcl_out);
+    std::cout<< "Hier" << std::endl;
     publish_new_pcl = false;
   }
 }
@@ -186,6 +168,8 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
   int16_t temp;
   float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
   static uint32_t seq = 0;
+  ros::Time current_time = ros::Time::now();
+  tf::TransformBroadcaster tf_broadcaster;
   if (is_imu_connected)
   {
     sensor_msgs::Imu imu_msg;
@@ -194,30 +178,49 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
 
     imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
       &mag_z, &ang_x, &ang_y, &ang_z, &temp);
-    /*
-    float yaw   =  atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
-    float pitch = -asin(2.0*(w*y - x*z));
-    float roll  = -atan2(2.0*(y*z + w*x), -(pow(w,2)-pow(x,2)-pow(y,2)+pow(z,2)));
 
+
+    float yaw1   =  atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
+    float pitch1 = -asin(2.0*(w*y - x*z));
+    float roll1  = -atan2(2.0*(y*z + w*x), -(pow(w,2)-pow(x,2)-pow(y,2)+pow(z,2)));
+
+    //std::cout << "y:" << rad2deg(yaw) << "p:" << rad2deg(pitch) << "r:" << rad2deg(roll) << std::endl;
     tf::Quaternion q;
-    q.setEuler(yaw, pitch, roll);
-    */
+    //q = q.inverse();
+    std::cout << "y:" << rad2deg(yaw1) << "p:" << rad2deg(pitch1) << "r:" << rad2deg(roll1) << std::endl;
+    q.setRPY(roll1, pitch1, yaw1);
+    //std::cout << "Q1:" << "x:" << x << "y" << y << "z:" << z << "w:" << w << std::endl;
+    //std::cout << "Q2:" << "x:" << q.getAxis().getX() << "y" << q.getAxis().getY() << "z:" << q.getAxis().getZ() << "w:" << q.getW() << std::endl;
+
+    //std::cout << "y:" << rad2deg(q.getAxis().getX()) << "p:" << rad2deg(q.getAxis().getY()) << "r:" << rad2deg(q.getAxis().getZ()) << std::endl;
+
     // message header
     imu_msg.header.seq = seq;
-    imu_msg.header.stamp = ros::Time::now();
-    imu_msg.header.frame_id = "/world";
+    imu_msg.header.stamp = current_time;
+    imu_msg.header.frame_id = "base_link";
     // imu data
+    //q *= -1;
     /*
-    imu_msg.orientation.x = q.getAxis()[0];
-    imu_msg.orientation.y = q.getAxis()[1];
-    imu_msg.orientation.z = q.getAxis()[2];
-    imu_msg.orientation.w = q.getW();
-    */
-    imu_msg.orientation.x = x;
-    imu_msg.orientation.y = y;
-    imu_msg.orientation.z = z;
-    imu_msg.orientation.w = w;
-
+    imu_msg.orientation.x = q.getAxis().getX();
+    imu_msg.orientation.y = q.getAxis().getY();
+    imu_msg.orientation.z = q.getAxis().getZ();
+    imu_msg.orientation.w = q.getW();*/
+//
+    /*
+x = -x
+ y = -y
+ z = -z 
+     
+     tf::Quaternion q(x,y,z,w);
+     tf::Quaternion q2;
+     q2.setEuler(deg2rad(180),deg2rad(180),deg2rad(180));
+     
+     q2 *= q;*/
+    
+    imu_msg.orientation.x = w;
+    imu_msg.orientation.y = z*-1;
+    imu_msg.orientation.z = y;
+    imu_msg.orientation.w = x*-1;
     imu_msg.orientation_covariance[0] = -1;
 
     // velocity from °/14.375 to rad/s
@@ -365,24 +368,75 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
 }
 
 /*----------------------------------------------------------------------
- * pclCallback()
+ * callbackPcl()
  * Callback function for laser scanner pcl.
  *--------------------------------------------------------------------*/
 
-void LaserTransform::pclCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+void LaserTransform::callbackPcl(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
+  std::cout << msg->header.frame_id << std::endl;
   //ROS_INFO_STREAM("pcloud in");
+  /*
   float xp, yp, zp;
   tf::Transform transform;
+ 
   getPosition(&xp, &yp, &zp);
   transform.setOrigin( tf::Vector3(xp, yp, zp) );
   tf::Quaternion q = getQuaternion();
   transform.setRotation(laser_orientation);
   sensor_msgs::PointCloud2 pcl_tmp;
-  pcl_ros::transformPointCloud("/world2", transform,  *msg, pcl_tmp);
-  transform.setRotation(q);
-  pcl_ros::transformPointCloud("/world", transform,  pcl_tmp, pcl_out);
-  publish_new_pcl = true;
+
+  // transform laser orientation to imu orientation
+  //pcl_ros::transformPointCloud("/world2", transform,  *msg, pcl_tmp);
+  pcl_ros::transformPointCloud("/world", transform,  *msg, pcl_out);
+*/
+  pcl_out = *msg;
+  // transform with imu data
+  //transform.setRotation(q);
+  //pcl_ros::transformPointCloud("/world", transform,  pcl_tmp, pcl_out);
+  
+  //publish_new_pcl = true;
+  new_pcl_filtered = true;
+}
+
+/*----------------------------------------------------------------------
+ * callbackOdometryFiltered()
+ * Callback function for filtered odometry.
+ *--------------------------------------------------------------------*/
+
+void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr& msg)
+{
+  if (new_pcl_filtered == true) 
+  {
+    tf::Transform transform;
+    float xp, yp, zp;
+
+    getPosition(&xp, &yp, &zp);
+    transform.setOrigin( tf::Vector3(3.17, 0.7, 2.1) );
+    transform.setRotation(laser_orientation);
+    sensor_msgs::PointCloud2 pcl_tmp;
+    pcl_ros::transformPointCloud("/base_link", transform,  pcl_out, pcl_out);
+
+    xpos = msg->pose.pose.position.x;
+    ypos = msg->pose.pose.position.y;
+/*
+    // use filtered odometry for transform of the point cloud
+    transform.setOrigin(tf::Vector3(msg->pose.pose.position.x,
+      msg->pose.pose.position.y,msg->pose.pose.position.z));
+    transform.setRotation(tf::Quaternion(msg->pose.pose.orientation.x,
+      msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,
+      msg->pose.pose.orientation.w));
+	
+    pcl_ros::transformPointCloud("/base_link", transform,  pcl_tmp, pcl_out);
+*/
+    // publish transformed plc 
+    
+    std::cout<< "Hier2" << std::endl;
+    publish_new_pcl = true;
+    new_pcl_filtered = false;
+    publishPclMessage(pcl_pub);
+    //pcl_pub->publish(pcl_out);
+  }
 }
 
 /*----------------------------------------------------------------------
@@ -438,9 +492,6 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
     // Create IndustrialDigitalIn4 device object
     industrial_digital_in_4_create(&(lt->idi4), uid, &(lt->ipcon)); 
 
-    // Get threshold callbacks with a debounce time of 20ms
-    //industrial_dual_0_20ma_set_debounce_period(&(lt->dual020), lt->imu_convergence_speed);
-
     // Register threshold reached callback to function cb_reached
 
     industrial_digital_in_4_register_callback(&(lt->idi4),
@@ -448,18 +499,24 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
       (void*)idi4Callback,
       lt);
 
+    // set debounce period
+    industrial_digital_in_4_set_debounce_period(&(lt->idi4),10);
+
     // Enable interrupt on pin 0
     industrial_digital_in_4_set_interrupt(&(lt->idi4), 1 << 0);
 
-    //industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
-    //  DUAL_SENSOR1, DUAL_OPT, DUAL_MIN, DUAL_MAX);
-    //industrial_dual_0_20ma_set_current_callback_threshold(&(lt->dual020),
-    //  DUAL_SENSOR2, DUAL_OPT, DUAL_MIN, DUAL_MAX);
-
-    // set sample rate for sensors
-    //industrial_dual_0_20ma_set_sample_rate(&(lt->dual020),
-    //  INDUSTRIAL_DUAL_0_20MA_SAMPLE_RATE_240_SPS);
     lt->is_idi4_connected = true;
+  }
+  else if (device_identifier == DUAL_BUTTON_DEVICE_IDENTIFIER)
+  {
+    ROS_INFO_STREAM("found DualButton with UID:" << uid);
+    dual_button_create(&(lt->db), uid, &(lt->ipcon));
+
+    // Register state changed callback to function cb_state_changed
+    dual_button_register_callback(&(lt->db),
+                                  DUAL_BUTTON_CALLBACK_STATE_CHANGED,
+                                  (void *)dbCallback,
+                                  lt);
   }
 }
 
@@ -485,26 +542,76 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
     begin = ros::Time::now();
   else {
     ros::Time end = ros::Time::now();
-    // calculate rev
+    // calculate time between two impulses in ms
     float diff = (end.sec* 1000 + end.nsec / 1000000) - (begin.sec * 1000 + begin.nsec / 1000000);
 
     // check if vehicle is moving
     if (diff < 3000) 
     {
-      lt->rev = 1000.0/diff;
+      // calculate rev
+      lt->rev = (1000.0/diff)/2.0; // 2 magnets
+      // ... and the velocity in m/s
+      lt->velocity = (1.4207 * lt->rev - 0.0409)/3.6;
+
+      if (lt->isMeasure == true)
+        lt->velo_log << end <<  "::" << lt->rev << "::" << diff << std::endl;
+
       //ROS_INFO_STREAM("Zeit End:" << end.sec << "::" << end.nsec);
       //ROS_INFO_STREAM("Zeit Start:" << begin.sec << "::" << begin.nsec);
       //ROS_INFO_STREAM("Diff:" << diff << " ms");
-      ROS_INFO_STREAM("Drehzahl:" << lt->rev);
+      ROS_INFO_STREAM("Drehzahl:" << lt->rev << " #### Geschwindigkeit:" << (lt->velocity*3.6));
     } else
     {
+      // ignore first rev value after stand still
       ROS_INFO_STREAM("START");
     }
-    
+
+    // reset timestamps
     begin = ros::Time::now();
     lt->last_rev = ros::Time::now();
   }
   return;
+}
+
+/*----------------------------------------------------------------------
+ * dbCallback()
+ * Callback function for Tinkerforge Dual Button Bricklet
+ *--------------------------------------------------------------------*/
+ 
+void LaserTransform::dbCallback(uint8_t button_l, uint8_t button_r, 
+                      uint8_t led_l, uint8_t led_r, 
+                      void *user_data)
+{
+  LaserTransform *lt = (LaserTransform*) user_data;
+  (void)led_l; // avoid unused parameter warning
+  (void)led_r; // avoid unused parameter warning
+  (void)user_data; // avoid unused parameter warning
+
+  if (VELO_LOGFILE == false)
+    return;
+
+  if(button_l == DUAL_BUTTON_BUTTON_STATE_PRESSED && lt->isMeasure == false)
+  {
+    lt->rpm_cnt = 0;
+    std::stringstream ss;
+
+    time_t t;
+    struct tm *ts;
+    char buff[80];
+
+    // build filename
+    t = time(NULL);
+    ts = localtime(&t);
+
+    strftime(buff, 80, "#####%Y_%m_%d-%H_%M_%S#####", ts);
+    lt->velo_log << buff  << std::endl;
+    lt->isMeasure = true;
+  }
+
+  if(button_r == DUAL_BUTTON_BUTTON_STATE_PRESSED)
+  {
+    lt->isMeasure = false;
+  }
 }
 
 /*----------------------------------------------------------------------
@@ -527,9 +634,7 @@ tf::Quaternion LaserTransform::getQuaternion()
   //-------
 
   tf::Quaternion q;
-  q.setEuler(yaw, pitch, roll);
-  //tf::Quaternion q(x, y, z, w);
-  //tf::Quaternion q(x, y*-1, z, w);
+  q.setRPY(roll, pitch, yaw);
   return q;
 }
 
@@ -541,37 +646,59 @@ tf::Quaternion LaserTransform::getQuaternion()
 void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
 {
   static uint32_t seq = 0;
-  
+  static bool isStand = false;
+  tf::TransformBroadcaster odom_broadcaster;
+  ros::Time current_time = ros::Time::now();
+
   // check if vehicle stand still, after 3 seconds without rev
   if (ros::Time::now().sec - last_rev.sec >= 3) {
-    ROS_INFO_STREAM("STAND");  
+    if (isStand == false)
+    {
+      ROS_INFO_STREAM("STAND");
+      isStand = true;
+    }
+    velocity = 0.0;
+  } else {
+    isStand = false;
   }
 
-  this->velocity = 0;
-  
-  return;
+  //first, we'll publish the transform over tf
+  geometry_msgs::TransformStamped odom_trans;
+  odom_trans.header.stamp = current_time;
+  odom_trans.header.frame_id = "odom";
+  odom_trans.child_frame_id = "base_link";
+
+  odom_trans.transform.translation.x = 0.0;
+  odom_trans.transform.translation.y = 0.0;
+  odom_trans.transform.translation.z = 0.0;
+  //odom_trans.transform.rotation = odom_quat;
+ 
+  //send the transform
+  odom_broadcaster.sendTransform(odom_trans);
 
   nav_msgs::Odometry odo_msg;
 
   // message header
   odo_msg.header.seq =  seq;
-  odo_msg.header.stamp = ros::Time::now();
-  odo_msg.header.frame_id = "/world";
-
-  //odo_msg.child_header = "base_link";
+  odo_msg.header.stamp = current_time;
+  odo_msg.header.frame_id = "odom";
+  odo_msg.child_frame_id = "base_link";
 
   odo_msg.pose.pose.position.x = 0;
   odo_msg.pose.pose.position.y = 0;
   odo_msg.pose.pose.position.z = 0;
   
-  odo_msg.twist.twist.linear.x = 0;
+  odo_msg.twist.twist.linear.x = velocity; //velocity
   odo_msg.twist.twist.angular.x = 0;
+  
+  odo_msg.twist.covariance[0] = -1;
+  odo_msg.pose.covariance[0] = -1;
 
   pub_message->publish(odo_msg);
 
   seq++;
 
-  ROS_INFO_STREAM(this->velocity);  
+  //ROS_INFO_STREAM(this->velocity);  
   return;
 }
 
@@ -582,8 +709,8 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
 
 int LaserTransform::getPosition(float *x_pos, float *y_pos, float *z_pos)
 {
-  *x_pos = 0;
-  *y_pos = 0;
+  *x_pos = xpos;
+  *y_pos = ypos;
   *z_pos = 0;
   return true;
 }
