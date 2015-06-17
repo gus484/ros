@@ -26,12 +26,11 @@
 #include <tf/transform_broadcaster.h>
 
 #define HOST "localhost"
-//#define HOST "141.56.161.43"
-//#define HOST 	"192.168.0.55"
-#define PORT 	4223
+#define PORT 4223
 
 #define GPS_LOGFILE false
-#define VELO_LOGFILE true
+#define VELO_LOGFILE false
+#define FULL_SENSOR_LOGFILE true
 #define LOGFILE_PATH "/home/vmuser/logs/"
 
 /*----------------------------------------------------------------------
@@ -56,9 +55,6 @@ LaserTransform::LaserTransform()
   last_rev = ros::Time::now();
 
   xpos = ypos = 0;
-  // set laser scanner orientation to imu orientation
-  //laser_orientation.setRPY(-90*M_PI/180.0,20*M_PI/180.0,-25*M_PI/180.0);
-  laser_orientation.setRPY(deg2rad(-90),deg2rad(20),deg2rad(-25)); // test
 
   std::stringstream ss;
 
@@ -90,7 +86,7 @@ LaserTransform::LaserTransform()
 }
 
 /*----------------------------------------------------------------------
- * ~LaserTransform
+ * ~LaserTransform()
  * Destructor
  *--------------------------------------------------------------------*/
 
@@ -98,6 +94,7 @@ LaserTransform::~LaserTransform()
 {
   if (is_imu_connected)
   {
+    // disconnect tinkerforge
     imu_leds_off(&imu);
     ipcon_destroy(&ipcon);
   }
@@ -150,7 +147,6 @@ void LaserTransform::publishPclMessage(ros::Publisher *pub_message)
   if (publish_new_pcl)
   {
     pub_message->publish(pcl_out);
-    std::cout<< "Hier" << std::endl;
     publish_new_pcl = false;
   }
 }
@@ -179,61 +175,50 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
       &mag_z, &ang_x, &ang_y, &ang_z, &temp);
 
-
-    float yaw1   =  atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
-    float pitch1 = -asin(2.0*(w*y - x*z));
-    float roll1  = -atan2(2.0*(y*z + w*x), -(pow(w,2)-pow(x,2)-pow(y,2)+pow(z,2)));
-
-    //std::cout << "y:" << rad2deg(yaw) << "p:" << rad2deg(pitch) << "r:" << rad2deg(roll) << std::endl;
-    tf::Quaternion q;
-    //q = q.inverse();
-    std::cout << "y:" << rad2deg(yaw1) << "p:" << rad2deg(pitch1) << "r:" << rad2deg(roll1) << std::endl;
-    q.setRPY(roll1, pitch1, yaw1);
-    //std::cout << "Q1:" << "x:" << x << "y" << y << "z:" << z << "w:" << w << std::endl;
-    //std::cout << "Q2:" << "x:" << q.getAxis().getX() << "y" << q.getAxis().getY() << "z:" << q.getAxis().getZ() << "w:" << q.getW() << std::endl;
-
-    //std::cout << "y:" << rad2deg(q.getAxis().getX()) << "p:" << rad2deg(q.getAxis().getY()) << "r:" << rad2deg(q.getAxis().getZ()) << std::endl;
-
     // message header
     imu_msg.header.seq = seq;
     imu_msg.header.stamp = current_time;
     imu_msg.header.frame_id = "base_link";
-    // imu data
-    //q *= -1;
-    /*
-    imu_msg.orientation.x = q.getAxis().getX();
-    imu_msg.orientation.y = q.getAxis().getY();
-    imu_msg.orientation.z = q.getAxis().getZ();
-    imu_msg.orientation.w = q.getW();*/
-//
-    /*
-x = -x
- y = -y
- z = -z 
-     
-     tf::Quaternion q(x,y,z,w);
-     tf::Quaternion q2;
-     q2.setEuler(deg2rad(180),deg2rad(180),deg2rad(180));
-     
-     q2 *= q;*/
-    
+
     imu_msg.orientation.x = w;
     imu_msg.orientation.y = z*-1;
     imu_msg.orientation.z = y;
     imu_msg.orientation.w = x*-1;
-    imu_msg.orientation_covariance[0] = -1;
+
+    // orientation_covariance
+    boost::array<const double, 9> oc = 
+      { 0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1};
+
+    imu_msg.orientation_covariance = oc;
+    //imu_msg.orientation_covariance[0] = -1;
 
     // velocity from °/14.375 to rad/s
     imu_msg.angular_velocity.x = deg2rad(ang_x/14.375);
     imu_msg.angular_velocity.y = deg2rad(ang_y/14.375);
     imu_msg.angular_velocity.z = deg2rad(ang_z/14.375);
-    imu_msg.angular_velocity_covariance[0] = -1;
+
+    // velocity_covariance
+    boost::array<const double, 9> vc = 
+      { 0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1};
+    imu_msg.angular_velocity_covariance = vc;
+    //imu_msg.angular_velocity_covariance[0] = -1;
 
     // acceleration from mG to m/s²
     imu_msg.linear_acceleration.x = (acc_x/1000.0)*9,80605;
     imu_msg.linear_acceleration.y = (acc_y/1000.0)*9,80605;
     imu_msg.linear_acceleration.z = (acc_z/1000.0)*9,80605;
-    imu_msg.linear_acceleration_covariance[0] = -1;
+
+    // linear_acceleration_covariance
+    boost::array<const double, 9> lac = 
+      { 0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1};
+    imu_msg.linear_acceleration_covariance = lac;
+    //imu_msg.linear_acceleration_covariance[0] = -1;
 
     pub_message->publish(imu_msg);
 
@@ -251,15 +236,15 @@ void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
   static uint32_t seq = 0;
   if (is_imu_connected)
   {
-	int16_t x = 0, y = 0, z = 0;
-	imu_get_magnetic_field(&imu, &x, &y, &z);
+    int16_t x = 0, y = 0, z = 0;
+    imu_get_magnetic_field(&imu, &x, &y, &z);
 
-	sensor_msgs::MagneticField mf_msg;
+    sensor_msgs::MagneticField mf_msg;
 
     // message header
     mf_msg.header.seq =  seq;
     mf_msg.header.stamp = ros::Time::now();
-    mf_msg.header.frame_id = "/world";
+    mf_msg.header.frame_id = "mf";
 
     // magnetic field from mG to T
     mf_msg.magnetic_field.x = x/10000000.0;
@@ -320,7 +305,7 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
     // message header
     gps_msg.header.seq =  seq;
     gps_msg.header.stamp = ros::Time::now();
-    gps_msg.header.frame_id = "/world";
+    gps_msg.header.frame_id = "gps";
     // gps status
     gps_msg.status.status = gps_msg.status.STATUS_SBAS_FIX;
     gps_msg.status.service = gps_msg.status.SERVICE_GPS;
@@ -374,28 +359,8 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
 
 void LaserTransform::callbackPcl(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
-  std::cout << msg->header.frame_id << std::endl;
-  //ROS_INFO_STREAM("pcloud in");
-  /*
-  float xp, yp, zp;
-  tf::Transform transform;
- 
-  getPosition(&xp, &yp, &zp);
-  transform.setOrigin( tf::Vector3(xp, yp, zp) );
-  tf::Quaternion q = getQuaternion();
-  transform.setRotation(laser_orientation);
-  sensor_msgs::PointCloud2 pcl_tmp;
-
-  // transform laser orientation to imu orientation
-  //pcl_ros::transformPointCloud("/world2", transform,  *msg, pcl_tmp);
-  pcl_ros::transformPointCloud("/world", transform,  *msg, pcl_out);
-*/
   pcl_out = *msg;
-  // transform with imu data
-  //transform.setRotation(q);
-  //pcl_ros::transformPointCloud("/world", transform,  pcl_tmp, pcl_out);
-  
-  //publish_new_pcl = true;
+
   new_pcl_filtered = true;
 }
 
@@ -408,34 +373,16 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
 {
   if (new_pcl_filtered == true) 
   {
-    tf::Transform transform;
-    float xp, yp, zp;
-
-    getPosition(&xp, &yp, &zp);
-    transform.setOrigin( tf::Vector3(3.17, 0.7, 2.1) );
-    transform.setRotation(laser_orientation);
-    sensor_msgs::PointCloud2 pcl_tmp;
-    pcl_ros::transformPointCloud("/base_link", transform,  pcl_out, pcl_out);
+    // transform pcl to laser position
+    pcl_ros::transformPointCloud("/base_link", laser_pose,  pcl_out, pcl_out);
 
     xpos = msg->pose.pose.position.x;
     ypos = msg->pose.pose.position.y;
-/*
-    // use filtered odometry for transform of the point cloud
-    transform.setOrigin(tf::Vector3(msg->pose.pose.position.x,
-      msg->pose.pose.position.y,msg->pose.pose.position.z));
-    transform.setRotation(tf::Quaternion(msg->pose.pose.orientation.x,
-      msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,
-      msg->pose.pose.orientation.w));
-	
-    pcl_ros::transformPointCloud("/base_link", transform,  pcl_tmp, pcl_out);
-*/
-    // publish transformed plc 
-    
-    std::cout<< "Hier2" << std::endl;
+
+    // publish transformed plc    
     publish_new_pcl = true;
     new_pcl_filtered = false;
     publishPclMessage(pcl_pub);
-    //pcl_pub->publish(pcl_out);
   }
 }
 
@@ -639,8 +586,8 @@ tf::Quaternion LaserTransform::getQuaternion()
 }
 
 /*----------------------------------------------------------------------
- * getVelocity()
- * Read the velocity sensor from the serial connection
+ * publishOdometryMessage()
+ * Publish the odometry data (velocity vx)
  *--------------------------------------------------------------------*/
 
 void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
@@ -651,18 +598,21 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   ros::Time current_time = ros::Time::now();
 
   // check if vehicle stand still, after 3 seconds without rev
-  if (ros::Time::now().sec - last_rev.sec >= 3) {
+  if (ros::Time::now().sec - last_rev.sec >= 3)
+  {
     if (isStand == false)
     {
       ROS_INFO_STREAM("STAND");
       isStand = true;
     }
     velocity = 0.0;
-  } else {
+  } 
+  else 
+  {
     isStand = false;
   }
 
-  //first, we'll publish the transform over tf
+  // publish the transform over tf
   geometry_msgs::TransformStamped odom_trans;
   odom_trans.header.stamp = current_time;
   odom_trans.header.frame_id = "odom";
@@ -671,7 +621,6 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odom_trans.transform.translation.x = 0.0;
   odom_trans.transform.translation.y = 0.0;
   odom_trans.transform.translation.z = 0.0;
-  //odom_trans.transform.rotation = odom_quat;
  
   //send the transform
   odom_broadcaster.sendTransform(odom_trans);
@@ -688,17 +637,44 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.pose.pose.position.y = 0;
   odo_msg.pose.pose.position.z = 0;
   
-  odo_msg.twist.twist.linear.x = velocity; //velocity
+  odo_msg.twist.twist.linear.x = velocity;
   odo_msg.twist.twist.angular.x = 0;
-  
-  odo_msg.twist.covariance[0] = -1;
-  odo_msg.pose.covariance[0] = -1;
+
+  // twist.covariance
+  boost::array<const double, 36> tc = 
+    { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+      0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+      0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+
+  odo_msg.twist.covariance = tc;
+
+  // pose.covariance
+  boost::array<const double, 36> pc = 
+    { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+      0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+      0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+
+  odo_msg.pose.covariance = pc;
 
   pub_message->publish(odo_msg);
 
   seq++;
 
-  //ROS_INFO_STREAM(this->velocity);  
+  return;
+}
+
+/*----------------------------------------------------------------------
+ * setLaserPose()
+ * Set the laser pose
+ *--------------------------------------------------------------------*/
+void LaserTransform::setLaserPose(double x, double y, double z, 
+  double yaw, double pitch, double roll)
+{
+  tf::Quaternion q;
+  q.setRPY(deg2rad(roll),deg2rad(pitch),deg2rad(yaw));
+  laser_pose.setOrigin(tf::Vector3(x, y, z));
+  laser_pose.setRotation(q);
+  //std::cout << x << "::" << y << "::" << z << "::" << yaw << "::" << pitch << "::" << roll << std::endl;
   return;
 }
 
