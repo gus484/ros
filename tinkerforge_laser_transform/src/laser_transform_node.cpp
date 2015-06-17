@@ -29,6 +29,7 @@ int main (int argc, char **argv)
   string gps_topic;
   string odo_topic;
   string odo_topic_filtered;
+  XmlRpc::XmlRpcValue v;
 
   // Create a new LaserTransformer object.
   LaserTransform *node_lt = new LaserTransform();
@@ -50,6 +51,18 @@ int main (int argc, char **argv)
   private_node_handle_.param("odo_topic", odo_topic, string("odom"));
   private_node_handle_.param("odo_filtered", odo_topic_filtered, string("/odometry/filtered"));
   private_node_handle_.param("imu_convergence_speed", imu_convergence_speed, int(20));
+  private_node_handle_.param("laser_pose", v, v);
+
+  if (v.size() == 6 )//&& v.getType() == XmlRpc::XmlRpcValue::TypeArray)
+  {
+      node_lt->setLaserPose(static_cast<double>(v[0]), static_cast<double>(v[1]), 
+        static_cast<double>(v[2]), static_cast<double>(v[3]), static_cast<double>(v[4]),
+        static_cast<double>(v[5]));
+  }
+  else
+  {
+    node_lt->setLaserPose(0.0,0.0,0.0,0.0,0.0,0.0);
+  }
 
   // Create a subscriber for laser scanner plc data
   ros::Subscriber sub_pcl = n.subscribe(pcl_in_topic.c_str(), 1000, &LaserTransform::callbackPcl, node_lt);
@@ -60,9 +73,6 @@ int main (int argc, char **argv)
   // Create a publisher for transformed plc msgs
   ros::Publisher pcl_pub = n.advertise<sensor_msgs::PointCloud2>(pcl_out_topic.c_str(), 50);
   node_lt->setPclPublisher(&pcl_pub);
-  
-  // Create a publisher for transformed plc msgs
-  //ros::Publisher pub_joint = n.advertise<sensor_msgs::JointState Message>("fix_multicar", 50);
 
   // Create a publisher for magnetic field msgs
   ros::Publisher mf_pub = n.advertise<sensor_msgs::MagneticField>(mf_topic.c_str(), 50);
@@ -94,5 +104,4 @@ int main (int argc, char **argv)
   }
 
   return 0;
-  // end main
 }
