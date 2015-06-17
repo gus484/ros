@@ -49,6 +49,9 @@ public:
   //! Callcack function for filtered odometry.
   void callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr& msg);
 
+  //! Set the laser pose
+  void setLaserPose(double x, double y, double z, double yaw, double pitch, double roll);
+
   void setPclPublisher(ros::Publisher *pub)
   {
     pcl_pub = pub;
@@ -73,8 +76,8 @@ private:
   //! Callback function for Tinkerforge Industrial Digital In 4 Bricklet
    static void idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, void *user_data);
 
-   //! Callback function for Tinkerforge Dual Button Bricklet
-   static void dbCallback(uint8_t button_l, uint8_t button_r, 
+  //! Callback function for Tinkerforge Dual Button Bricklet
+  static void dbCallback(uint8_t button_l, uint8_t button_r, 
                       uint8_t led_l, uint8_t led_r, 
                       void *user_data);
 
@@ -134,6 +137,8 @@ private:
   double start_latitude;
   //! start longitude
   double start_longitude;
+  //! laser scanner pose
+  tf::Transform laser_pose;
   //! laser scanner orientation
   tf::Quaternion laser_orientation;
   //! The current car position on x-axis
