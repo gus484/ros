@@ -34,8 +34,6 @@ int main (int argc, char **argv)
   // Create a new LaserTransformer object.
   LaserTransform *node_lt = new LaserTransform();
 
-  node_lt->init();
-
   // while using different parameters.
   ros::NodeHandle private_node_handle_("~");
   private_node_handle_.param("rate", rate, int(10));
@@ -53,11 +51,18 @@ int main (int argc, char **argv)
   private_node_handle_.param("imu_convergence_speed", imu_convergence_speed, int(20));
   private_node_handle_.param("laser_pose", v, v);
 
-  if (v.size() == 6 && v.getType() == XmlRpc::XmlRpcValue::TypeArray)
+  if (v.valid())
   {
-      node_lt->setLaserPose(static_cast<double>(v[0]), static_cast<double>(v[1]), 
-        static_cast<double>(v[2]), static_cast<double>(v[3]), static_cast<double>(v[4]),
-        static_cast<double>(v[5]));
+    if (v.size() == 6 && v.getType() == XmlRpc::XmlRpcValue::TypeArray)
+    {
+        node_lt->setLaserPose(static_cast<double>(v[0]), static_cast<double>(v[1]), 
+          static_cast<double>(v[2]), static_cast<double>(v[3]), static_cast<double>(v[4]),
+          static_cast<double>(v[5]));
+    }
+    else
+    {
+      node_lt->setLaserPose(0.0,0.0,0.0,0.0,0.0,0.0);
+    }
   }
   else
   {
@@ -82,13 +87,15 @@ int main (int argc, char **argv)
 
   // Create a publisher for GPS msgs
   ros::Publisher gps_pub = n.advertise<sensor_msgs::NavSatFix>(gps_topic.c_str(), 50);
-  
+
   // Create a publisher for odometry mesgs
   ros::Publisher odo_pub = n.advertise<nav_msgs::Odometry>(odo_topic.c_str(),50);
 
   ros::Rate r(rate);
 
   node_lt->setImuConvergenceSpeed(imu_convergence_speed);
+
+  node_lt->init();
 
   while (n.ok())
   {

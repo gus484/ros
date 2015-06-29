@@ -379,7 +379,7 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
     xpos = msg->pose.pose.position.x;
     ypos = msg->pose.pose.position.y;
 
-    // publish transformed plc    
+    // publish transformed plc
     publish_new_pcl = true;
     new_pcl_filtered = false;
     publishPclMessage(pcl_pub);
@@ -422,7 +422,7 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
     ROS_INFO_STREAM("found IMU with UID:" << uid);
     // Create IMU device object
     imu_create(&(lt->imu), uid, &(lt->ipcon));
-    imu_set_convergence_speed(&(lt->imu),5);
+    imu_set_convergence_speed(&(lt->imu),lt->imu_convergence_speed);
     imu_leds_on(&(lt->imu));
     lt->is_imu_connected = true;
   }
@@ -524,7 +524,7 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
  * dbCallback()
  * Callback function for Tinkerforge Dual Button Bricklet
  *--------------------------------------------------------------------*/
- 
+
 void LaserTransform::dbCallback(uint8_t button_l, uint8_t button_r, 
                       uint8_t led_l, uint8_t led_r, 
                       void *user_data)
@@ -621,7 +621,7 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odom_trans.transform.translation.x = 0.0;
   odom_trans.transform.translation.y = 0.0;
   odom_trans.transform.translation.z = 0.0;
- 
+
   //send the transform
   odom_broadcaster.sendTransform(odom_trans);
 
@@ -636,12 +636,12 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.pose.pose.position.x = 0;
   odo_msg.pose.pose.position.y = 0;
   odo_msg.pose.pose.position.z = 0;
-  
+
   odo_msg.twist.twist.linear.x = velocity;
   odo_msg.twist.twist.angular.x = 0;
 
   // twist.covariance
-  boost::array<const double, 36> tc = 
+  boost::array<const double, 36> tc =
     { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
       0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
       0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
@@ -649,7 +649,7 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.twist.covariance = tc;
 
   // pose.covariance
-  boost::array<const double, 36> pc = 
+  boost::array<const double, 36> pc =
     { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
       0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
       0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
@@ -667,7 +667,7 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
  * setLaserPose()
  * Set the laser pose
  *--------------------------------------------------------------------*/
-void LaserTransform::setLaserPose(double x, double y, double z, 
+void LaserTransform::setLaserPose(double x, double y, double z,
   double yaw, double pitch, double roll)
 {
   tf::Quaternion q;

@@ -21,7 +21,7 @@ class LaserTransform
 public:
   //! Constructur
   LaserTransform();
-  
+
   //! Destructor
   ~LaserTransform();
 
@@ -66,7 +66,7 @@ public:
 private:
   //! Callback function for Tinkerforge ip connected .
   static void connectedCallback(uint8_t connect_reason, void *user_data);
- 
+
   //! Callback function for Tinkerforge enumerate.
   static void enumerateCallback(const char *uid, const char *connected_uid,
     char position, uint8_t hardware_version[3],
@@ -77,8 +77,8 @@ private:
    static void idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, void *user_data);
 
   //! Callback function for Tinkerforge Dual Button Bricklet
-  static void dbCallback(uint8_t button_l, uint8_t button_r, 
-                      uint8_t led_l, uint8_t led_r, 
+  static void dbCallback(uint8_t button_l, uint8_t button_r,
+                      uint8_t led_l, uint8_t led_r,
                       void *user_data);
 
   //! Get IMU quaternion.
