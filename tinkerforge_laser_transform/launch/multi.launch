@@ -4,6 +4,8 @@
 <!-- ############################################################### -->
   <node name="sickldmrs" pkg="sick_ldmrs" type="sickldmrs.py" output="screen">
     <param name="frame_id_prefix" value="/cloud" type="str" />
+    <param name="start_angle" value="30" type="int" /> <!-- 50 -->
+    <param name="end_angle" value="-30" type="int" /> <!-- -20 -->
   </node>
 <!-- ############################################################### -->
 <!-- TINKERFORGE LASER TRANSFORM NODE ############################## -->
@@ -15,7 +17,7 @@
     <param name="imu_topic" value="/imu/data" type="str" />
     <param name="imu_msgs" value="true" type="bool" />
     <param name="gps_msgs" value="false" type="bool" />
-    <param name="imu_convergence_speed" value="5" type="int" />
+    <param name="imu_convergence_speed" value="30" type="int" />
     <!-- Set Laser Pose x, y, z, yaw, pitch, roll in m and deg -->
     <rosparam param="laser_pose">[3.17, 0.7, 2.1, -25.0, 20.0, -90.0]</rosparam>
   </node>
@@ -26,9 +28,10 @@
     <!-- Static global frame in which the map will be published -->
     <param name="frame_id" value="/odom" type="str" />
     <!-- Resolution in meter for the map -->
-    <param name="resolution" value="0.15" />
+    <param name="resolution" value="0.05" />
     <!-- Maximum range in meter for inserting point cloud data -->
-    <param name="sensor_model/max_range" value="20" />
+    <param name="sensor_model/max_range" value="20.0" type="double" />
+    <param name="latch" value="false" type="bool" />
   </node>
 <!-- ############################################################### -->
 <!-- EKF LOCALIZATION NODE ######################################### -->
@@ -49,7 +52,7 @@
          carry out a predict cycle on the EKF without correcting it. This parameter can be thought of
          as the minimum frequency with which the filter will generate new output. Defaults to 1 / frequency
          if not specified. -->
-    <param name="sensor_timeout" value="0.1"/>  
+    <param name="sensor_timeout" value="0.09"/>  
      <!-- If this is set to true, no 3D information will be used in your state estimate. Use this if you
           are operating in a planar environment and want to ignore the effect of small variations in the
           ground plane that might otherwise be detected by, for example, an IMU. Defaults to false if
