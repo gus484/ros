@@ -186,7 +186,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     imu_msg.orientation.w = x*-1;
 
     // orientation_covariance
-    boost::array<const double, 9> oc = 
+    boost::array<const double, 9> oc =
       { 0.1, 0.1, 0.1,
         0.1, 0.1, 0.1,
         0.1, 0.1, 0.1};
@@ -200,7 +200,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     imu_msg.angular_velocity.z = deg2rad(ang_z/14.375);
 
     // velocity_covariance
-    boost::array<const double, 9> vc = 
+    boost::array<const double, 9> vc =
       { 0.1, 0.1, 0.1,
         0.1, 0.1, 0.1,
         0.1, 0.1, 0.1};
@@ -213,7 +213,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     imu_msg.linear_acceleration.z = (acc_z/1000.0)*9,80605;
 
     // linear_acceleration_covariance
-    boost::array<const double, 9> lac = 
+    boost::array<const double, 9> lac =
       { 0.1, 0.1, 0.1,
         0.1, 0.1, 0.1,
         0.1, 0.1, 0.1};
@@ -223,6 +223,26 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     pub_message->publish(imu_msg);
 
     seq++;
+  }
+}
+
+/*----------------------------------------------------------------------
+ * checkConvergenceSpeed()
+ * Set the speed of convergence depends on the angular velocity.
+ *--------------------------------------------------------------------*/
+
+void LaserTransform::checkConvergenceSpeed()
+{
+  if (is_imu_connected)
+  {
+    int16_t ang_x, ang_y, ang_z;
+    imu_get_angular_velocity(&imu, &ang_x, &ang_y, &ang_z);
+    if (ang_x > 50 || ang_y > 50 || ang_z > 50)
+    {
+      imu_set_convergence_speed(&imu, 80);
+    }
+    else
+      imu_set_convergence_speed(&imu, imu_convergence_speed);
   }
 }
 
@@ -244,7 +264,7 @@ void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
     // message header
     mf_msg.header.seq =  seq;
     mf_msg.header.stamp = ros::Time::now();
-    mf_msg.header.frame_id = "mf";
+    mf_msg.header.frame_id = "base_link";
 
     // magnetic field from mG to T
     mf_msg.magnetic_field.x = x/10000000.0;
@@ -252,7 +272,9 @@ void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
     mf_msg.magnetic_field.x = z/10000000.0;
 
     for (int i = 0 ; i < 9 ; i++)
-      mf_msg.magnetic_field_covariance[i] = 0;
+      mf_msg.magnetic_field_covariance[i] = 0.01;
+
+    pub_message->publish(mf_msg);
 
     seq++;
   }
@@ -376,6 +398,12 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
     // transform pcl to laser position
     pcl_ros::transformPointCloud("/base_link", laser_pose,  pcl_out, pcl_out);
 
+/*
+    if (FULL_SENSOR_LOGFILE)
+    {
+      full_log << msg->header.stamp;
+    }*/
+
     xpos = msg->pose.pose.position.x;
     ypos = msg->pose.pose.position.y;
 
@@ -437,7 +465,7 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
   {
     ROS_INFO_STREAM("found IDI4 with UID:" << uid);
     // Create IndustrialDigitalIn4 device object
-    industrial_digital_in_4_create(&(lt->idi4), uid, &(lt->ipcon)); 
+    industrial_digital_in_4_create(&(lt->idi4), uid, &(lt->ipcon));
 
     // Register threshold reached callback to function cb_reached
 
@@ -525,8 +553,8 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
  * Callback function for Tinkerforge Dual Button Bricklet
  *--------------------------------------------------------------------*/
 
-void LaserTransform::dbCallback(uint8_t button_l, uint8_t button_r, 
-                      uint8_t led_l, uint8_t led_r, 
+void LaserTransform::dbCallback(uint8_t button_l, uint8_t button_r,
+                      uint8_t led_l, uint8_t led_r,
                       void *user_data)
 {
   LaserTransform *lt = (LaserTransform*) user_data;
@@ -606,24 +634,11 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
       isStand = true;
     }
     velocity = 0.0;
-  } 
-  else 
+  }
+  else
   {
     isStand = false;
   }
-
-  // publish the transform over tf
-  geometry_msgs::TransformStamped odom_trans;
-  odom_trans.header.stamp = current_time;
-  odom_trans.header.frame_id = "odom";
-  odom_trans.child_frame_id = "base_link";
-
-  odom_trans.transform.translation.x = 0.0;
-  odom_trans.transform.translation.y = 0.0;
-  odom_trans.transform.translation.z = 0.0;
-
-  //send the transform
-  odom_broadcaster.sendTransform(odom_trans);
 
   nav_msgs::Odometry odo_msg;
 
@@ -637,7 +652,7 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.pose.pose.position.y = 0;
   odo_msg.pose.pose.position.z = 0;
 
-  odo_msg.twist.twist.linear.x = velocity;
+  odo_msg.twist.twist.linear.x = 1.0;
   odo_msg.twist.twist.angular.x = 0;
 
   // twist.covariance

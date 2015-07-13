@@ -99,7 +99,7 @@ int main (int argc, char **argv)
 
   while (n.ok())
   {
-    //node_lt->publishPclMessage(&pcl_pub);
+    node_lt->checkConvergenceSpeed();
     if (imu_msgs)
       node_lt->publishImuMessage(&imu_pub);
     if (gps_msgs)

@@ -28,10 +28,10 @@ public:
   //! Init
   int init();
 
-  //! Publish the transformed plc data.
+  //! Publish the transformed plc data
   void publishPclMessage(ros::Publisher *pub_message);
 
-  //! Publish the IMU message.
+  //! Publish the IMU message
   void publishImuMessage(ros::Publisher *pub_message);
 
   //! Publish the NavSatFix message.
@@ -43,15 +43,19 @@ public:
   //! Publish the current car velocity
   void publishOdometryMessage(ros::Publisher *pub_message);
 
-  //! Callcack function for laser scanner pcl.
+  //! Callcack function for laser scanner pcl
   void callbackPcl(const sensor_msgs::PointCloud2::ConstPtr& msg);
 
-  //! Callcack function for filtered odometry.
+  //! Callcack function for filtered odometry
   void callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr& msg);
 
   //! Set the laser pose
   void setLaserPose(double x, double y, double z, double yaw, double pitch, double roll);
 
+  //! Set the speed of convergence depends on the angular velocity.
+  void checkConvergenceSpeed();
+
+  //! Set publisher for transformed pcl data
   void setPclPublisher(ros::Publisher *pub)
   {
     pcl_pub = pub;
@@ -155,6 +159,8 @@ private:
   std::fstream gps_log;
   //! Velocity-Logfile
   std::fstream velo_log;
+  //! Full-Logfile
+  std::fstream full_log;
 };
 
 #endif
