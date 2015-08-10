@@ -26,20 +26,20 @@ int main (int argc, char **argv)
   // while using different parameters.
   ros::NodeHandle private_node_handle_("~");
   private_node_handle_.param("pub_topic_raw", pub_topic_raw, string("/can_raw_receive"));
-  private_node_handle_.param("sub_topic_raw", sub_topic_raw, string("/can_raw_write"));
+  private_node_handle_.param("sub_topic_raw", sub_topic_raw, string("/can_raw_send"));
 
-  // Create a publisher and name the topic
+  // create a publisher for tinycan::CanMsg
   ros::Publisher pub_can_message = n.advertise<tinycan::CanMsg>(pub_topic_raw.c_str(), 50);
-  // Create a subscriber
+  // create a subscriber for tinycan::CanMsg
   ros::Subscriber sub_message = n.subscribe(sub_topic_raw.c_str(), 1000, &tinycan::Can::callbackCanMessage, can_dev);
 
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(50);
   int count = 0;
 
   while (ros::ok()) {
     // read can messages
     while (can_dev->readMsg(&can_msg)) {
-      can_dev->printMsg(&can_msg);
+      //can_dev->printMsg(&can_msg);
       can_dev->publishCanMessage(&pub_can_message, &can_msg);
     }
 

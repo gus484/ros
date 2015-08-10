@@ -46,19 +46,19 @@ int Can::init()
 
   if ((err = LoadDriver(TREIBER_NAME)) < 0)
   {
-    std::cout << "error! code " << err <<std::endl;
+    std::cout << "error load driver! code " << err <<std::endl;
     return false;
   }
 
   if ((err = CanInitDriver((char*)TREIBER_INIT)) != 0)
   {
-    std::cout << "error! code " << err <<std::endl;
+    std::cout << "error init driver! code " << err <<std::endl;
     return false;
   }
 
   if ((err = CanDeviceOpen(device_idx, DEVICE_OPEN)) != 0)
   {
-    std::cout << "error! code " << err <<std::endl;
+    std::cout << "error device open! code " << err <<std::endl;
     return false;
   }
 
@@ -84,10 +84,6 @@ int Can::buildMsg(TCanMsg *msg, uint8_t id, uint8_t len, char* data)
   // msg Variable Initialisieren
   msg->MsgFlags = 0L; // Alle Flags löschen, Stanadrt Frame Format,
                       // keine RTR, Datenlänge auf 0
-
-  //msg->MsgRTR = 1;  // Nachricht als RTR Frame versenden
-  //msg->MsgEFF = 1;  // Nachricht im EFF (Ext. Frame Format) versenden
-
   msg->Id = id;
   msg->MsgLen = len;
   memcpy(msg->MsgData, data, len);
@@ -122,7 +118,7 @@ int Can::readMsg(TCanMsg *msg)
 
   CanGetDeviceStatus(device_idx, &status);
 
-  if (status.DrvStatus >= DRV_STATUS_CAN_OPEN) 
+  if (status.DrvStatus >= DRV_STATUS_CAN_OPEN)
   {
     if (status.CanStatus == CAN_STATUS_BUS_OFF)
     {
@@ -130,7 +126,7 @@ int Can::readMsg(TCanMsg *msg)
       CanSetMode(0, OP_CAN_RESET, CAN_CMD_NONE);
     }
   }
-  else 
+  else
   {
     std::cout << status.DrvStatus << std::endl;
     std::cout << "CAN Device nicht geöffnet" << std::endl;
@@ -153,7 +149,7 @@ int Can::readMsg(TCanMsg *msg)
  * Print a can message.
  *--------------------------------------------------------------------*/
 
-int Can::printMsg(TCanMsg *msg) 
+int Can::printMsg(TCanMsg *msg)
 {
   if (msg == NULL)
     return false;
@@ -184,10 +180,13 @@ void Can::callbackCanMessage(const tinycan::CanMsg::ConstPtr& msg)
   if (msg == NULL)
     return;
   TCanMsg tmsg;
+  tmsg.MsgFlags = 0L; // Alle Flags löschen, Stanadrt Frame Format,
+                   // keine RTR, Datenlänge auf 0
   tmsg.Id = msg->id;
   tmsg.MsgLen = msg->len;
+
   for (int i = 0 ; i < msg->len ; i++)
-    tmsg.MsgData[i] = msg->data[i];
+    tmsg.MsgData[i] = (char)(msg->data[i]);
   sendMsg(&tmsg);
 }
 
@@ -198,7 +197,7 @@ void Can::callbackCanMessage(const tinycan::CanMsg::ConstPtr& msg)
 
 void Can::publishCanMessage(ros::Publisher *pub_message, TCanMsg *tmsg)
 {
-  ROS_INFO_STREAM("pub can message");
+  //ROS_INFO_STREAM("pub can message");
   if (tmsg == NULL)
     return;
   tinycan::CanMsg msg;
