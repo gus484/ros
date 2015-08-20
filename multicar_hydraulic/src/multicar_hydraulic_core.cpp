@@ -137,6 +137,7 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
     // Verschub
     if (msg->name[i].compare(std::string("trans_schlitten")) == 0)
     {
+
       std::cout << "    "  << "Position (ROS):" << msg->position[i] << std::endl;
       p = msg->position[i] * 1000; // convert from m to mm
       if (p > 0)
@@ -144,6 +145,7 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
       else
         p = 612 + (-1*p);
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
+      std::cout << "    " << "Position ist (real):" << ausleger[IDX_VERSCHUB].position << "mm" << std::endl;
       ausleger[IDX_VERSCHUB].target_position = p;
       ausleger[IDX_VERSCHUB].is_moveing = false;
       if ( ausleger[IDX_VERSCHUB].position < ausleger[IDX_VERSCHUB].target_position)
@@ -154,26 +156,41 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
     // Hauptarm
     else if (msg->name[i].compare(std::string("rot_dreharm_hauptarm")) == 0)
     {
-      std::cout << "    "  << msg->position[i] << std::endl;
+		return;
       // convert from rad to mm
       p = (msg->position[i] - 2321764533.0/412300000.0) / (-37699.0/8246000.0);
       std::cout << "    "  << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
-      ausleger[NID_Hauptarm].target_position = p;
-      ausleger[NID_Hauptarm].is_moveing = false;
-      if (p < ausleger[NID_Hauptarm].position)
+      std::cout << "    " << "Position ist (real):" << ausleger[IDX_Hauptarm].position << "mm" << std::endl;
+      ausleger[IDX_Hauptarm].target_position = p;
+      ausleger[IDX_Hauptarm].is_moveing = false;
+      if (p < ausleger[IDX_Hauptarm].position)
       {
-        ausleger[NID_Hauptarm].state = MOVE_DOWN;
+        ausleger[IDX_Hauptarm].state = MOVE_DOWN;
       }
       else
       {
-        ausleger[NID_Hauptarm].state = MOVE_UP;
+        ausleger[IDX_Hauptarm].state = MOVE_UP;
       }
     }
     // Nebenarm
     else if (msg->name[i].compare(std::string("rot_dreharm_nebenarm")) == 0)
     {
-      std::cout << "    "  << msg->position[i] << std::endl;
+      // convert from rad to mm
+      p = (msg->position[i] - 469937.0/79700.0) / (-5.0/797.0);
+      std::cout << "    "  << "Position (ROS):" << msg->position[i] << std::endl;
+      std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
+      std::cout << "    " << "Position ist (real):" << ausleger[IDX_Nebenarm].position << "mm" << std::endl;
+      ausleger[IDX_Nebenarm].target_position = p;
+      ausleger[IDX_Nebenarm].is_moveing = false;
+      if (p < ausleger[IDX_Hauptarm].position)
+      {
+        ausleger[IDX_Nebenarm].state = MOVE_DOWN;
+      }
+      else
+      {
+        ausleger[IDX_Nebenarm].state = MOVE_UP;
+      }
     }
   }
   return;
@@ -200,12 +217,12 @@ void Hydraulic::callbackCanMessageRaw(const tinycan::CanMsg::ConstPtr& msg)
         if (msg->data[1] == 0x40)
         {
           Ausleger::pre_control_signal = PRE_CONTROL_SIG_ON_ACK;
-          printf("pre sig on sck\n"); 
+          printf("pre sig on ack\n"); 
         }
         if (msg->data[1] == 0x00)
         {
           Ausleger::pre_control_signal = PRE_CONTROL_SIG_OFF_ACK;
-          printf("pre sig off sck\n"); 
+          printf("pre sig off ack\n"); 
         }
       break;
       case CO_BOOM_MSG:
@@ -361,7 +378,7 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         publishCanMessage(&cmsg);
         break;
       }
-      if (ausleger[NID_THRUST].state == MOVE_THRUST_LEFT)
+      if (ausleger[IDX_VERSCHUB].state == MOVE_THRUST_LEFT)
       {
         // activate pwm left
         cmsg.id = 0x314;
@@ -397,6 +414,14 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
     case NID_Hauptarm:
       if (pwm == 0) // stop moveing
       {
+        // deactivate hauptarm
+        cmsg.id = 0x214;
+        cmsg.len = 3;
+        cmsg.data[1] = 0x40;
+        cmsg.data[2] = 0x00;
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+        
         // set pwm value 0
         cmsg.id = 0x394;
         cmsg.len = 8;
@@ -404,8 +429,16 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         publishCanMessage(&cmsg);
         break;
       }
-      if (ausleger[NID_Hauptarm].state == MOVE_UP)
+      if (ausleger[IDX_Hauptarm].state == MOVE_UP)
       {
+        // activate hauptarm up
+        cmsg.id = 0x214;
+        cmsg.len = 3;
+        cmsg.data[1] = 0x40;
+        cmsg.data[2] = 0x02;
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+
         // activate pwm up
         cmsg.id = 0x394;
         cmsg.len = 8;
@@ -415,11 +448,70 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
       }
       else
       {
+        // activate hauptarm up
+        cmsg.id = 0x214;
+        cmsg.len = 3;
+        cmsg.data[1] = 0x40;
+        cmsg.data[2] = 0x01;
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+
         // activate pwm down
         cmsg.id = 0x394;
         cmsg.len = 8;
         cmsg.data[0] = pwm & 0x00FF;
         cmsg.data[1] = pwm >> 8;
+        publishCanMessage(&cmsg);
+      }
+    break;
+    case NID_Nebenarm:
+      if (pwm == 0)
+      {
+        // set pwm value 0
+        cmsg.id = 0x394;
+        cmsg.len = 8;
+        cmsg.data[4] = cmsg.data[5] = cmsg.data[6] = cmsg.data[7] = 0x00;
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+        
+        // deactivate pwm
+        cmsg.id = 0x314;
+        cmsg.len = 2;
+        cmsg.data[0] = 0x00; // pwm thrust left on
+        cmsg.data[1] = 0x02;
+        publishCanMessage(&cmsg);
+        break;
+      }
+      if (ausleger[IDX_Nebenarm].state == MOVE_UP)
+      {
+        // activate Nebenarm up
+        cmsg.id = 0x314;
+        cmsg.len = 2;
+        cmsg.data[0] = 0x08; // pwm thrust left on
+        cmsg.data[1] = 0x02;
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+
+        cmsg.id = 0x394;
+        cmsg.len = 8;
+        cmsg.data[6] = pwm & 0x00FF;
+        cmsg.data[7] = pwm >> 8;
+        publishCanMessage(&cmsg);
+      }
+      else
+      {
+        // activate Nebenarm up
+        cmsg.id = 0x314;
+        cmsg.len = 2;
+        cmsg.data[0] = 0x04; // pwm thrust right on
+        cmsg.data[1] = 0x02;
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+
+        cmsg.id = 0x394;
+        cmsg.len = 8;
+        cmsg.data[4] = pwm & 0x00FF;
+        cmsg.data[5] = pwm >> 8;
         publishCanMessage(&cmsg);
       }
     break;
@@ -460,7 +552,6 @@ int Hydraulic::checkTask()
         setPWM(ausleger[i].node_id, 1250);
 
         ausleger[i].is_moveing = true;
-        //ausleger[i].state = MOVE_MOVING;
       }
     }
   }
@@ -470,7 +561,7 @@ int Hydraulic::checkTask()
   {
     if (ausleger[i].is_moveing == true && ausleger[i].state >= MOVE_MOVING)
     {
-      ROS_INFO_STREAM("Check movement for node " << ausleger[i].node_name << "::" << ausleger[i].position << "::" << ausleger[i].target_position);
+      //ROS_INFO_STREAM("Check movement for node " << ausleger[i].node_name << "::" << ausleger[i].position << "::" << ausleger[i].target_position);
       // check target
       if (ausleger[i].state == MOVE_THRUST_LEFT)
       {
@@ -493,12 +584,6 @@ int Hydraulic::checkTask()
         }
       }
     }
-    /*
-    else if (ausleger[i].is_moveing == true && ausleger[i].state > MOVE_MOVING)
-    {
-      ausleger[i].state = MOVE_MOVING;
-    }
-    */
   }
 
   // check for any active movement

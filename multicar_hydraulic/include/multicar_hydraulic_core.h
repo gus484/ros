@@ -39,6 +39,8 @@ namespace hydraulic {
 #define NID_THRUST 128
 #define NID_Schnellwechselkopf 125 // only virtual
 
+#define IDX_Nebenarm 1
+#define IDX_Hauptarm 2
 #define IDX_VERSCHUB 3
 #define IDX_Schnellwechselkopf 4
 
