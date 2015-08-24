@@ -6,17 +6,11 @@
   <maintainer email="fischerm@htw-dresden.de">M. Fischer</maintainer>
   <author>M.Fischer</author>
   <license>MIT</license>
-  <!-- The *_depend tags are used to specify dependencies -->
-  <!-- Dependencies can be catkin packages or system dependencies -->
-  <!-- Examples: -->
   <!-- Use build_depend for packages you need at compile time: -->
   <build_depend>message_generation</build_depend>
-  <!-- Use buildtool_depend for build tool packages: -->
-  <!--   <buildtool_depend>catkin</buildtool_depend> -->
+  <build_depend>tinycan</build_depend>
   <!-- Use run_depend for packages you need at runtime: -->
   <run_depend>message_runtime</run_depend>
-  <!-- Use test_depend for packages you need only for testing: -->
-  <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
@@ -24,14 +18,5 @@
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
-
-
-  <!-- The export tag contains other, unspecified, tags -->
-  <export>
-    <!-- You can specify that this package is a metapackage here: -->
-    <!-- <metapackage/> -->
-
-    <!-- Other tools can request additional information be placed here -->
-
-  </export>
+  <run_depend>tinycan</run_depend>
 </package>
