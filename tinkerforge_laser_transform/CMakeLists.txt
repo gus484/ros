@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   geographic_msgs
   geometry_msgs
+  octomap_msgs
+  octomap_server
   geodesy
   tf
   pcl_ros
@@ -120,6 +122,7 @@ add_executable(
   src/bricklet_gps.c
   src/bricklet_industrial_digital_in_4.c
   src/bricklet_dual_button.c
+  src/brick_imu_v2.c
 )
 
 ## Add cmake target dependencies of the executable/library

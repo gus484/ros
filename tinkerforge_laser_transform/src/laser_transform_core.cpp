@@ -20,10 +20,12 @@
 #include <geometry_msgs/Point.h>
 #include "ip_connection.h"
 #include "brick_imu.h"
+#include "brick_imu_v2.h"
 #include "bricklet_gps.h"
 #include "bricklet_industrial_digital_in_4.h"
 #include "bricklet_dual_button.h"
 #include <tf/transform_broadcaster.h>
+#include "octomap_msgs/BoundingBoxQuery.h"
 
 #define HOST "localhost"
 #define PORT 4223
@@ -42,10 +44,12 @@ LaserTransform::LaserTransform()
 {
   publish_new_pcl = false;
   is_imu_connected = false;
+  is_imu_v2_connected = false;
   is_gps_connected = false;
   is_idi4_connected = false;
   isMeasure = false;
   new_pcl_filtered = false;
+  isPlc = false;
   start_latitude = 0;
   start_longitude = 0;
   velocity = 0.0;
@@ -97,6 +101,11 @@ LaserTransform::~LaserTransform()
     // disconnect tinkerforge
     imu_leds_off(&imu);
     ipcon_destroy(&ipcon);
+  }
+  if (is_imu_v2_connected)
+  {
+    imu_v2_leds_off(&imu_v2);
+    imu_v2_destroy(&imu_v2);
   }
   // close gps logfile
   if (gps_log.is_open())
@@ -163,18 +172,48 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
   int16_t ang_x, ang_y, ang_z;
   int16_t temp;
   float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
+  int16_t ix = 0, iy = 0, iz = 0, iw = 0;
   static uint32_t seq = 0;
   ros::Time current_time = ros::Time::now();
   tf::TransformBroadcaster tf_broadcaster;
-  if (is_imu_connected)
+  if (is_imu_connected || is_imu_v2_connected)
   {
     sensor_msgs::Imu imu_msg;
 
-    imu_get_quaternion(&imu, &x, &y, &z, &w);
+    if (is_imu_connected)
+    {
+      imu_get_quaternion(&imu_v2, &x, &y, &z, &w);
 
-    imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
-      &mag_z, &ang_x, &ang_y, &ang_z, &temp);
+      imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
+        &mag_z, &ang_x, &ang_y, &ang_z, &temp);
 
+      ang_x = ang_x / 14.375;
+      ang_y = ang_y / 14.375;
+      ang_z = ang_z / 14.375;
+
+      acc_x = (acc_x/1000.0)*9.80605;
+      acc_y = (acc_y/1000.0)*9.80605;
+      acc_z = (acc_z/1000.0)*9.80605;
+    }
+    else
+    {
+      imu_v2_get_quaternion(&imu, &ix, &iy, &iz, &iw);
+      x = ix / 16383.0;
+      y = iy / 16383.0;
+      z = iz / 16383.0;
+      w = iw / 16383.0;
+
+      imu_v2_get_linear_acceleration(&imu, &acc_x, &acc_y, &acc_z);
+      imu_v2_get_angular_velocity(&imu_v2, &ang_x, &ang_y, &ang_z);
+
+      ang_x = ang_x * 16;
+      ang_y = ang_y * 16;
+      ang_z = ang_z * 16;
+
+      acc_x = acc_x * 100;
+      acc_y = acc_y * 100;
+      acc_z = acc_z * 100;
+    }
     // message header
     imu_msg.header.seq = seq;
     imu_msg.header.stamp = current_time;
@@ -195,9 +234,9 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     //imu_msg.orientation_covariance[0] = -1;
 
     // velocity from °/14.375 to rad/s
-    imu_msg.angular_velocity.x = deg2rad(ang_x/14.375);
-    imu_msg.angular_velocity.y = deg2rad(ang_y/14.375);
-    imu_msg.angular_velocity.z = deg2rad(ang_z/14.375);
+    imu_msg.angular_velocity.x = deg2rad(ang_x);
+    imu_msg.angular_velocity.y = deg2rad(ang_y);
+    imu_msg.angular_velocity.z = deg2rad(ang_z);
 
     // velocity_covariance
     boost::array<const double, 9> vc =
@@ -208,9 +247,9 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     //imu_msg.angular_velocity_covariance[0] = -1;
 
     // acceleration from mG to m/s²
-    imu_msg.linear_acceleration.x = (acc_x/1000.0)*9,80605;
-    imu_msg.linear_acceleration.y = (acc_y/1000.0)*9,80605;
-    imu_msg.linear_acceleration.z = (acc_z/1000.0)*9,80605;
+    imu_msg.linear_acceleration.x = acc_x;
+    imu_msg.linear_acceleration.y = acc_y;
+    imu_msg.linear_acceleration.z = acc_z;
 
     // linear_acceleration_covariance
     boost::array<const double, 9> lac =
@@ -233,6 +272,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
 
 void LaserTransform::checkConvergenceSpeed()
 {
+  return;
   if (is_imu_connected)
   {
     int16_t ang_x, ang_y, ang_z;
@@ -382,8 +422,10 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
 void LaserTransform::callbackPcl(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
   pcl_out = *msg;
-
+  //pcl_ros::transformPointCloud("/base_link", laser_pose,  *msg, pcl_out);
+  //publishPclMessage(pcl_pub);
   new_pcl_filtered = true;
+  isPlc = true;
 }
 
 /*----------------------------------------------------------------------
@@ -393,6 +435,15 @@ void LaserTransform::callbackPcl(const sensor_msgs::PointCloud2::ConstPtr& msg)
 
 void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr& msg)
 {
+  xpos = msg->pose.pose.position.x;
+  ypos = msg->pose.pose.position.y;
+  
+  tf::Quaternion q (msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
+  tf::Matrix3x3 m(q);
+  double roll, pitch, yaw;
+  m.getRPY(roll, pitch, yaw);
+  yy = yaw;
+
   if (new_pcl_filtered == true) 
   {
     // transform pcl to laser position
@@ -404,8 +455,6 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
       full_log << msg->header.stamp;
     }*/
 
-    xpos = msg->pose.pose.position.x;
-    ypos = msg->pose.pose.position.y;
 
     // publish transformed plc
     publish_new_pcl = true;
@@ -447,12 +496,24 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
   // check if device is an imu
   if(device_identifier == IMU_DEVICE_IDENTIFIER)
   {
+    if (lt->is_imu_v2_connected)
+      return;
     ROS_INFO_STREAM("found IMU with UID:" << uid);
     // Create IMU device object
     imu_create(&(lt->imu), uid, &(lt->ipcon));
     imu_set_convergence_speed(&(lt->imu),lt->imu_convergence_speed);
     imu_leds_on(&(lt->imu));
     lt->is_imu_connected = true;
+  }
+  else if (device_identifier == IMU_V2_DEVICE_IDENTIFIER)
+  {
+    if (lt->is_imu_connected)
+      return;
+    ROS_INFO_STREAM("found IMU_v2 with UID:" << uid);
+    // Create IMU_v2 device object
+    imu_v2_create(&(lt->imu_v2), uid, &(lt->ipcon));
+    imu_leds_on(&(lt->imu_v2));
+    lt->is_imu_v2_connected = true;
   }
   else if (device_identifier == GPS_DEVICE_IDENTIFIER)
   {
@@ -597,10 +658,18 @@ void LaserTransform::dbCallback(uint8_t button_l, uint8_t button_r,
 tf::Quaternion LaserTransform::getQuaternion()
 {
   float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
+  int16_t ix = 0, iy = 0, iz = 0, iw = 0;
 
   if (is_imu_connected)
     imu_get_quaternion(&imu, &x, &y, &z, &w);
-
+  if (is_imu_v2_connected)
+  {
+    imu_v2_get_quaternion(&imu, &ix, &iy, &iz, &iw);
+    x = ix / 16383.0;
+    y = iy / 16383.0;
+    z = iz / 16383.0;
+    w = iw / 16383.0;
+  }
   //-------
   float yaw   =  atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
   float pitch = -asin(2.0*(w*y - x*z));
@@ -640,6 +709,23 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
     isStand = false;
   }
 
+  // publish the transform over tf
+  geometry_msgs::TransformStamped odom_trans;
+  geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
+
+  odom_trans.header.stamp = current_time;
+  odom_trans.header.frame_id = "odom";
+  odom_trans.child_frame_id = "base_link";
+
+  odom_trans.transform.translation.x = 0.0;
+  odom_trans.transform.translation.y = 0.0;
+  odom_trans.transform.translation.z = 0.0;
+
+  odom_trans.transform.rotation = odom_quat;
+
+  //send the transform
+  odom_broadcaster.sendTransform(odom_trans);
+
   nav_msgs::Odometry odo_msg;
 
   // message header
@@ -652,22 +738,22 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.pose.pose.position.y = 0;
   odo_msg.pose.pose.position.z = 0;
 
-  odo_msg.twist.twist.linear.x = 1.0;
+  odo_msg.twist.twist.linear.x = velocity;
   odo_msg.twist.twist.angular.x = 0;
 
   // twist.covariance
   boost::array<const double, 36> tc =
-    { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-      0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-      0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+    { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
   odo_msg.twist.covariance = tc;
 
   // pose.covariance
   boost::array<const double, 36> pc =
-    { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-      0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-      0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+    { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
   odo_msg.pose.covariance = pc;
 
@@ -691,6 +777,95 @@ void LaserTransform::setLaserPose(double x, double y, double z,
   laser_pose.setRotation(q);
   //std::cout << x << "::" << y << "::" << z << "::" << yaw << "::" << pitch << "::" << roll << std::endl;
   return;
+}
+
+float getAngle(float angle, float rot)
+{
+  if ( angle + rot > 360.0)
+    return rot - ( 360.0 - angle);
+  if ( angle + rot < 0.0 )
+    return 360 - ( -rot - angle);
+  return angle + rot;
+}
+
+/*----------------------------------------------------------------------
+ * clearOctomap()
+ * Set the unnecessary part of the octomap free
+ *--------------------------------------------------------------------*/
+void LaserTransform::clearOctomap(ros::ServiceClient *client)
+{
+  octomap_msgs::BoundingBoxQuery srv;
+  int bb_width = 20, bb_height = 20, bb_depth = 40;
+  float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
+  float yaw;
+  if (is_imu_connected)
+  {
+    imu_get_quaternion(&imu, &x, &y, &z, &w);
+    yaw = atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
+  }
+  yaw = yy;
+  std::cout << "x:" << xpos << " :: y:" << ypos << " :: yaw:" << rad2deg(yaw)+180.0 << std::endl;
+  float m = tan(deg2rad(getAngle(rad2deg(yaw)+180.0,-90.0)));
+  std::cout << "m:" << m << " :: yaw:" << getAngle(rad2deg(yaw)+180.0,-90.0) << std::endl;
+  // y - y1 = m (x - x1)
+  float xn;
+  if (rad2deg(yaw)+180.0 > 180.0)
+    xn = -bb_width;
+  else
+    xn = bb_width;
+  
+  srv.request.min.x = xpos + xn;
+  srv.request.min.y = m * ( srv.request.min.x - xpos ) + ypos;
+  srv.request.min.z = -bb_height;
+  
+  //std::cout << rad2deg(yaw)+180.0 << " :: " << m << " :: " << getAngle(rad2deg(yaw)+180.0,-90.0) << std::endl;
+  std::cout << srv.request.min.x << " :: " << srv.request.min.y << std::endl;
+  //std::cout << " :::::::: " << xpos << "dd" << xn << std::endl;
+
+  srv.request.max.x = xpos - xn;
+  srv.request.max.y = m * ( srv.request.max.x - xpos ) + ypos;
+  srv.request.max.z = bb_height;
+  
+  //std::cout << srv.request.max.x << " :: " << srv.request.max.y << std::endl;
+  
+  float yn;
+  if (rad2deg(yaw)+180.0 > 180.0)
+    yn = bb_depth;
+  else
+    yn = -bb_depth;
+  m = tan(deg2rad(rad2deg(yaw)+180.0));
+  srv.request.max.x = ((srv.request.max.y + yn - srv.request.max.y) / (m)) + srv.request.max.x; 
+  srv.request.max.y += yn;
+  
+
+  std::cout << srv.request.max.x << " :: " << srv.request.max.y << std::endl;
+  std::cout << " ###### " << std::endl;
+
+
+  if (isPlc == false)
+	return;
+  //isPlc == false;
+  // TODO: verknuepfe cloud_in mit dieser Funktion
+
+  // limit the octomap region clear rate
+  static int u = 850;
+  u++;
+  if (u < 900)
+   return;
+  u= 880;
+
+  std::cout << "Hier!!!" <<std::endl;
+  //std::cout << "x:" << xpos << " ### y:" << ypos <<std::endl;
+  if (client->exists())
+  {
+    std::cout << "+++" <<std::endl;
+  } else { //std::cout << "---" <<std::endl;
+  }
+  if (client->call(srv))
+  {
+    //std::cout << "hhh" <<std::endl;
+  } else { //std::cout << "aaa" <<std::endl;
+  }
 }
 
 /*----------------------------------------------------------------------
