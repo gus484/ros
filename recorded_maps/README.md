@@ -7,6 +7,10 @@ Zur Aufzeichnung und Wiedergabe von Messfahrten kann das Tool rosbag eingesetzt 
 * starten des Systems (Sensoren, Octomap, ...) mittels roslaunch
 * rosbag record --all --output-name=NAME
 
+## Filtern einer Messung
+* rosbag filter INBAG OUTBAG EXPRESSION
+ * EXPRESSION: "topic=='/imu/data' '/cloud' '/gps/fix' '/odom'"
+
 ## Wiedergabe einer Messung
 
 * Vorbereitungen
