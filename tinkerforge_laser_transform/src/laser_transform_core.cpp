@@ -182,7 +182,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
 
     if (is_imu_connected)
     {
-      imu_get_quaternion(&imu_v2, &x, &y, &z, &w);
+      imu_get_quaternion(&imu, &x, &y, &z, &w);
 
       imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
         &mag_z, &ang_x, &ang_y, &ang_z, &temp);
@@ -197,7 +197,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     }
     else
     {
-      imu_v2_get_quaternion(&imu, &ix, &iy, &iz, &iw);
+      imu_v2_get_quaternion(&imu_v2, &ix, &iy, &iz, &iw);
       x = ix / 16383.0;
       y = iy / 16383.0;
       z = iz / 16383.0;
