@@ -664,7 +664,7 @@ tf::Quaternion LaserTransform::getQuaternion()
     imu_get_quaternion(&imu, &x, &y, &z, &w);
   if (is_imu_v2_connected)
   {
-    imu_v2_get_quaternion(&imu, &ix, &iy, &iz, &iw);
+    imu_v2_get_quaternion(&imu_v2, &ix, &iy, &iz, &iw);
     x = ix / 16383.0;
     y = iy / 16383.0;
     z = iz / 16383.0;
@@ -795,70 +795,76 @@ float getAngle(float angle, float rot)
 void LaserTransform::clearOctomap(ros::ServiceClient *client)
 {
   octomap_msgs::BoundingBoxQuery srv;
-  int bb_width = 20, bb_height = 20, bb_depth = 40;
+  int bb_width = 30, bb_height = 20, bb_depth = 5;
   float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
   float yaw;
-  if (is_imu_connected)
-  {
-    imu_get_quaternion(&imu, &x, &y, &z, &w);
-    yaw = atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
-  }
+
   yaw = yy;
-  std::cout << "x:" << xpos << " :: y:" << ypos << " :: yaw:" << rad2deg(yaw)+180.0 << std::endl;
-  float m = tan(deg2rad(getAngle(rad2deg(yaw)+180.0,-90.0)));
-  std::cout << "m:" << m << " :: yaw:" << getAngle(rad2deg(yaw)+180.0,-90.0) << std::endl;
-  // y - y1 = m (x - x1)
-  float xn;
-  if (rad2deg(yaw)+180.0 > 180.0)
-    xn = -bb_width;
-  else
-    xn = bb_width;
-  
-  srv.request.min.x = xpos + xn;
-  srv.request.min.y = m * ( srv.request.min.x - xpos ) + ypos;
-  srv.request.min.z = -bb_height;
-  
-  //std::cout << rad2deg(yaw)+180.0 << " :: " << m << " :: " << getAngle(rad2deg(yaw)+180.0,-90.0) << std::endl;
-  std::cout << srv.request.min.x << " :: " << srv.request.min.y << std::endl;
-  //std::cout << " :::::::: " << xpos << "dd" << xn << std::endl;
 
-  srv.request.max.x = xpos - xn;
-  srv.request.max.y = m * ( srv.request.max.x - xpos ) + ypos;
-  srv.request.max.z = bb_height;
-  
-  //std::cout << srv.request.max.x << " :: " << srv.request.max.y << std::endl;
-  
-  float yn;
-  if (rad2deg(yaw)+180.0 > 180.0)
-    yn = bb_depth;
-  else
-    yn = -bb_depth;
-  m = tan(deg2rad(rad2deg(yaw)+180.0));
-  srv.request.max.x = ((srv.request.max.y + yn - srv.request.max.y) / (m)) + srv.request.max.x; 
-  srv.request.max.y += yn;
-  
+  if (rad2deg(yaw) < 0)
+    yaw = deg2rad(180 + (180 + rad2deg(yaw)));
 
-  std::cout << srv.request.max.x << " :: " << srv.request.max.y << std::endl;
-  std::cout << " ###### " << std::endl;
+  if (rad2deg(yaw) >= 0 && rad2deg(yaw) <= 45)
+  {
+    srv.request.max.x = int(xpos) + 1;
+    srv.request.max.y = int(ypos) + 3 * bb_depth;
+    srv.request.max.z = bb_height;   
 
+    srv.request.min.x = int(xpos) - bb_width;
+    srv.request.min.y = int(ypos) - 3 * bb_depth;
+    srv.request.min.z = -bb_height;
+  }
+  if (rad2deg(yaw) > 45 &&  rad2deg(yaw) <= 180.0)
+  {
+    srv.request.max.x = int(xpos) + bb_width;
+    srv.request.max.y = int(ypos);
+    srv.request.max.z = bb_height;   
 
-  if (isPlc == false)
-	return;
+    srv.request.min.x = int(xpos) - bb_width;
+    srv.request.min.y = int(ypos) - 3 * bb_depth;
+    srv.request.min.z = -bb_height;
+  }
+  if (rad2deg(yaw) > 180 && rad2deg(yaw) <= 225)
+  {
+    srv.request.max.x = int(xpos) + bb_width;
+    srv.request.max.y = int(ypos) + 3 * bb_depth;
+    srv.request.max.z = bb_height;   
+
+    srv.request.min.x = int(xpos) - 1;
+    srv.request.min.y = int(ypos) - 3 * bb_depth;
+    srv.request.min.z = -bb_height;
+  }
+  if (rad2deg(yaw) > 225 && rad2deg(yaw) <= 360)
+  {
+    srv.request.max.x = int(xpos) + bb_width;
+    srv.request.max.y = int(ypos) + 3 * bb_depth;
+    srv.request.max.z = bb_height;   
+
+    srv.request.min.x = int(xpos) - bb_width;
+    srv.request.min.y = int(ypos);
+    srv.request.min.z = -bb_height;  
+  }
+  
+  std::cout << "Pos:" << int(xpos) << " :: " << int(ypos) << " :: " << rad2deg(yaw) << std::endl;
+  std::cout << "Pos:" << int(srv.request.max.x) << " :: " << int(srv.request.max.y) << std::endl;
+  std::cout << "Pos:" << int(srv.request.min.x) << " :: " << int(srv.request.min.y) << std::endl;
+  std::cout << "################################################################" << std::endl;
+
+  //if (isPlc == false)
+//	return;
   //isPlc == false;
   // TODO: verknuepfe cloud_in mit dieser Funktion
 
   // limit the octomap region clear rate
-  static int u = 850;
+  static int u = 400;
   u++;
-  if (u < 900)
+  if (u < 800)
    return;
-  u= 880;
+  u= 700;
 
-  std::cout << "Hier!!!" <<std::endl;
-  //std::cout << "x:" << xpos << " ### y:" << ypos <<std::endl;
   if (client->exists())
   {
-    std::cout << "+++" <<std::endl;
+    //std::cout << "+++" <<std::endl;
   } else { //std::cout << "---" <<std::endl;
   }
   if (client->call(srv))
