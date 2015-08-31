@@ -5,17 +5,18 @@ Zur Aufzeichnung und Wiedergabe von Messfahrten kann das Tool rosbag eingesetzt 
 ## Aufzeichnen einer Messung
 
 * starten des Systems (Sensoren, Octomap, ...) mittels roslaunch
-* rosbag record --all --output-name=NAME
+* `rosbag record --all --output-name=NAME`
 
 ## Filtern einer Messung
-* rosbag filter INBAG OUTBAG EXPRESSION
- * EXPRESSION: "topic=='/imu/data' '/cloud' '/gps/fix' '/odom'"
+* `rosbag filter INBAG OUTBAG EXPRESSION`
+ * EXPRESSION:  "topic=='/imu/data' or topic== '/cloud' or topic== '/fix' or topic== '/odom'"
+
 
 ## Wiedergabe einer Messung
 
 * Vorbereitungen
  * roscore starten
- * rosparam set use_sim_time true
+ * `rosparam set use_sim_time true` (Simulationszeit im Rviz verwenden)
  * vorbereitetes launch file mit roslaunch starten
 * Wiedergabe
- * rosbag play FILE --clock -r SPEED
+ * `rosbag play FILE --clock -r SPEED`

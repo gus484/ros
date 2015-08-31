@@ -203,7 +203,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
       z = iz / 16383.0;
       w = iw / 16383.0;
 
-      imu_v2_get_linear_acceleration(&imu, &acc_x, &acc_y, &acc_z);
+      imu_v2_get_linear_acceleration(&imu_v2, &acc_x, &acc_y, &acc_z);
       imu_v2_get_angular_velocity(&imu_v2, &ang_x, &ang_y, &ang_z);
 
       ang_x = ang_x * 16;
@@ -437,14 +437,14 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
 {
   xpos = msg->pose.pose.position.x;
   ypos = msg->pose.pose.position.y;
-  
+
   tf::Quaternion q (msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
   tf::Matrix3x3 m(q);
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
   yy = yaw;
 
-  if (new_pcl_filtered == true) 
+  if (new_pcl_filtered == true)
   {
     // transform pcl to laser position
     pcl_ros::transformPointCloud("/base_link", laser_pose,  pcl_out, pcl_out);
@@ -582,7 +582,7 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
     float diff = (end.sec* 1000 + end.nsec / 1000000) - (begin.sec * 1000 + begin.nsec / 1000000);
 
     // check if vehicle is moving
-    if (diff < 3000) 
+    if (diff < 3000)
     {
       // calculate rev
       lt->rev = (1000.0/diff)/2.0; // 2 magnets
@@ -808,7 +808,7 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
   {
     srv.request.max.x = int(xpos) + 1;
     srv.request.max.y = int(ypos) + 3 * bb_depth;
-    srv.request.max.z = bb_height;   
+    srv.request.max.z = bb_height;
 
     srv.request.min.x = int(xpos) - bb_width;
     srv.request.min.y = int(ypos) - 3 * bb_depth;
@@ -818,7 +818,7 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
   {
     srv.request.max.x = int(xpos) + bb_width;
     srv.request.max.y = int(ypos);
-    srv.request.max.z = bb_height;   
+    srv.request.max.z = bb_height;
 
     srv.request.min.x = int(xpos) - bb_width;
     srv.request.min.y = int(ypos) - 3 * bb_depth;
@@ -828,7 +828,7 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
   {
     srv.request.max.x = int(xpos) + bb_width;
     srv.request.max.y = int(ypos) + 3 * bb_depth;
-    srv.request.max.z = bb_height;   
+    srv.request.max.z = bb_height;
 
     srv.request.min.x = int(xpos) - 1;
     srv.request.min.y = int(ypos) - 3 * bb_depth;
@@ -838,13 +838,13 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
   {
     srv.request.max.x = int(xpos) + bb_width;
     srv.request.max.y = int(ypos) + 3 * bb_depth;
-    srv.request.max.z = bb_height;   
+    srv.request.max.z = bb_height;
 
     srv.request.min.x = int(xpos) - bb_width;
     srv.request.min.y = int(ypos);
-    srv.request.min.z = -bb_height;  
+    srv.request.min.z = -bb_height;
   }
-  
+
   std::cout << "Pos:" << int(xpos) << " :: " << int(ypos) << " :: " << rad2deg(yaw) << std::endl;
   std::cout << "Pos:" << int(srv.request.max.x) << " :: " << int(srv.request.max.y) << std::endl;
   std::cout << "Pos:" << int(srv.request.min.x) << " :: " << int(srv.request.min.y) << std::endl;
