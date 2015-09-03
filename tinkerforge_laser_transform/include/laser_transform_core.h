@@ -74,19 +74,19 @@ public:
   }
 private:
   //! Callback function for Tinkerforge ip connected .
-  static void connectedCallback(uint8_t connect_reason, void *user_data);
+  static void callbackConnected(uint8_t connect_reason, void *user_data);
 
   //! Callback function for Tinkerforge enumerate.
-  static void enumerateCallback(const char *uid, const char *connected_uid,
+  static void callbackEnumerate(const char *uid, const char *connected_uid,
     char position, uint8_t hardware_version[3],
     uint8_t firmware_version[3], uint16_t device_identifier,
     uint8_t enumeration_type, void *user_data);
 
   //! Callback function for Tinkerforge Industrial Digital In 4 Bricklet
-  static void idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, void *user_data);
+  static void callbackIdi4(uint8_t interrupt_mask, uint8_t value_mask, void *user_data);
 
   //! Callback function for Tinkerforge Dual Button Bricklet
-  static void dbCallback(uint8_t button_l, uint8_t button_r,
+  static void callbackDb(uint8_t button_l, uint8_t button_r,
                       uint8_t led_l, uint8_t led_r,
                       void *user_data);
 
@@ -118,12 +118,12 @@ private:
   bool is_imu_connected;
   //! The IMU convergence_speed
   int imu_convergence_speed;
+  //! Time to correct the imu orientation
+  ros::Time imu_init_time;
   //! The IMU_v2 device.
   IMUV2 imu_v2;
   //! The IMU_v2 state
   bool is_imu_v2_connected;
-  //! The IMU_v2 convergence_speed
-  int imu_v2_convergence_speed;
   //! The GPS device.
   GPS gps;
   //! The GPS state.

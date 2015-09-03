@@ -134,13 +134,13 @@ int LaserTransform::init()
   // register connected callback to "cb_connected"
   ipcon_register_callback(&ipcon,
     IPCON_CALLBACK_CONNECTED,
-    (void*)connectedCallback,
+    (void*)callbackConnected,
     this);
 
   // register enumeration callback to "cb_enumerate"
   ipcon_register_callback(&ipcon,
     IPCON_CALLBACK_ENUMERATE,
-    (void*)enumerateCallback,
+    (void*)callbackEnumerate,
     this);
 
   return 0;
@@ -182,6 +182,12 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
 
     if (is_imu_connected)
     {
+      // check if imu is initialized
+      /*if (ros::Time::now().sec - imu_init_time.sec < 3)
+        return;
+      else
+        imu_set_convergence_speed(&imu, imu_convergence_speed);
+	*/
       imu_get_quaternion(&imu, &x, &y, &z, &w);
 
       imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
@@ -203,7 +209,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
       z = iz / 16383.0;
       w = iw / 16383.0;
 
-      imu_v2_get_linear_acceleration(&imu, &acc_x, &acc_y, &acc_z);
+      imu_v2_get_linear_acceleration(&imu_v2, &acc_x, &acc_y, &acc_z);
       imu_v2_get_angular_velocity(&imu_v2, &ang_x, &ang_y, &ang_z);
 
       ang_x = ang_x * 16;
@@ -446,7 +452,7 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
   m.getRPY(roll, pitch, yaw);
   yy = yaw;
 
-  if (new_pcl_filtered == true) 
+  if (new_pcl_filtered == true)
   {
     // transform pcl to laser position
     pcl_ros::transformPointCloud("/base_link", laser_pose,  pcl_out, pcl_out);
@@ -466,11 +472,11 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
 }
 
 /*----------------------------------------------------------------------
- * connectedCallback()
+ * callbackConnected()
  * Callback function for Tinkerforge ip connected
  *--------------------------------------------------------------------*/
 
-void LaserTransform::connectedCallback(uint8_t connect_reason, void *user_data)
+void LaserTransform::callbackConnected(uint8_t connect_reason, void *user_data)
 {
   LaserTransform *lt = (LaserTransform*) user_data;
   if (lt->is_imu_connected == false)
@@ -479,11 +485,11 @@ void LaserTransform::connectedCallback(uint8_t connect_reason, void *user_data)
 }
 
 /*----------------------------------------------------------------------
- * enumerateCallback()
+ * callbackEnumerate()
  * Callback function for Tinkerforge enumerate
  *--------------------------------------------------------------------*/
 
-void LaserTransform::enumerateCallback(const char *uid, const char *connected_uid,
+void LaserTransform::callbackEnumerate(const char *uid, const char *connected_uid,
                   char position, uint8_t hardware_version[3],
                   uint8_t firmware_version[3], uint16_t device_identifier,
                   uint8_t enumeration_type, void *user_data)
@@ -505,6 +511,7 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
     imu_create(&(lt->imu), uid, &(lt->ipcon));
     imu_set_convergence_speed(&(lt->imu),lt->imu_convergence_speed);
     imu_leds_on(&(lt->imu));
+    lt->imu_init_time = ros::Time::now();
     lt->is_imu_connected = true;
   }
   else if (device_identifier == IMU_V2_DEVICE_IDENTIFIER)
@@ -534,7 +541,7 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
 
     industrial_digital_in_4_register_callback(&(lt->idi4),
       INDUSTRIAL_DIGITAL_IN_4_CALLBACK_INTERRUPT,
-      (void*)idi4Callback,
+      (void*)callbackIdi4,
       lt);
 
     // set debounce period
@@ -553,17 +560,17 @@ void LaserTransform::enumerateCallback(const char *uid, const char *connected_ui
     // Register state changed callback to function cb_state_changed
     dual_button_register_callback(&(lt->db),
                                   DUAL_BUTTON_CALLBACK_STATE_CHANGED,
-                                  (void *)dbCallback,
+                                  (void *)callbackDb,
                                   lt);
   }
 }
 
 /*----------------------------------------------------------------------
- * idi4Callback()
+ * callbackIdi4()
  * Callback function for Tinkerforge Industrial Digital In 4 Bricklet
  *--------------------------------------------------------------------*/
 
-void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, void *user_data)
+void LaserTransform::callbackIdi4(uint8_t interrupt_mask, uint8_t value_mask, void *user_data)
 {
   LaserTransform *lt = (LaserTransform*) user_data;
   static ros::Time begin = ros::Time(0,0);
@@ -584,7 +591,7 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
     float diff = (end.sec* 1000 + end.nsec / 1000000) - (begin.sec * 1000 + begin.nsec / 1000000);
 
     // check if vehicle is moving
-    if (diff < 3000) 
+    if (diff < 3000)
     {
       // calculate rev
       lt->rev = (1000.0/diff)/4.0; // 4 magnets
@@ -599,7 +606,7 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
       //ROS_INFO_STREAM("Zeit End:" << end.sec << "::" << end.nsec);
       //ROS_INFO_STREAM("Zeit Start:" << begin.sec << "::" << begin.nsec);
       //ROS_INFO_STREAM("Diff:" << diff << " ms");
-      ROS_INFO_STREAM("Drehzahl:" << lt->rev << " #### Geschwindigkeit:" << (lt->velocity*3.6));
+      ROS_INFO_STREAM("Drehzahl:" << lt->rev << " #### Geschwindigkeit:" << (lt->velocity*3.6) << " km/h");
     } else
     {
       // ignore first rev value after stand still
@@ -614,11 +621,11 @@ void LaserTransform::idi4Callback(uint8_t interrupt_mask, uint8_t value_mask, vo
 }
 
 /*----------------------------------------------------------------------
- * dbCallback()
+ * callbackDb()
  * Callback function for Tinkerforge Dual Button Bricklet
  *--------------------------------------------------------------------*/
 
-void LaserTransform::dbCallback(uint8_t button_l, uint8_t button_r,
+void LaserTransform::callbackDb(uint8_t button_l, uint8_t button_r,
                       uint8_t led_l, uint8_t led_r,
                       void *user_data)
 {
@@ -668,7 +675,7 @@ tf::Quaternion LaserTransform::getQuaternion()
     imu_get_quaternion(&imu, &x, &y, &z, &w);
   if (is_imu_v2_connected)
   {
-    imu_v2_get_quaternion(&imu, &ix, &iy, &iz, &iw);
+    imu_v2_get_quaternion(&imu_v2, &ix, &iy, &iz, &iw);
     x = ix / 16383.0;
     y = iy / 16383.0;
     z = iz / 16383.0;
@@ -799,70 +806,78 @@ float getAngle(float angle, float rot)
 void LaserTransform::clearOctomap(ros::ServiceClient *client)
 {
   octomap_msgs::BoundingBoxQuery srv;
-  int bb_width = 20, bb_height = 20, bb_depth = 40;
+  int bb_width = 30, bb_height = 20, bb_depth = 5;
   float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
   float yaw;
-  if (is_imu_connected)
-  {
-    imu_get_quaternion(&imu, &x, &y, &z, &w);
-    yaw = atan2(2.0*(x*y + w*z), pow(w,2)+pow(x,2)-pow(y,2)-pow(z,2));
-  }
+
   yaw = yy;
-  std::cout << "x:" << xpos << " :: y:" << ypos << " :: yaw:" << rad2deg(yaw)+180.0 << std::endl;
-  float m = tan(deg2rad(getAngle(rad2deg(yaw)+180.0,-90.0)));
-  std::cout << "m:" << m << " :: yaw:" << getAngle(rad2deg(yaw)+180.0,-90.0) << std::endl;
-  // y - y1 = m (x - x1)
-  float xn;
-  if (rad2deg(yaw)+180.0 > 180.0)
-    xn = -bb_width;
-  else
-    xn = bb_width;
-  
-  srv.request.min.x = xpos + xn;
-  srv.request.min.y = m * ( srv.request.min.x - xpos ) + ypos;
-  srv.request.min.z = -bb_height;
-  
-  //std::cout << rad2deg(yaw)+180.0 << " :: " << m << " :: " << getAngle(rad2deg(yaw)+180.0,-90.0) << std::endl;
-  std::cout << srv.request.min.x << " :: " << srv.request.min.y << std::endl;
-  //std::cout << " :::::::: " << xpos << "dd" << xn << std::endl;
 
-  srv.request.max.x = xpos - xn;
-  srv.request.max.y = m * ( srv.request.max.x - xpos ) + ypos;
-  srv.request.max.z = bb_height;
-  
-  //std::cout << srv.request.max.x << " :: " << srv.request.max.y << std::endl;
-  
-  float yn;
-  if (rad2deg(yaw)+180.0 > 180.0)
-    yn = bb_depth;
-  else
-    yn = -bb_depth;
-  m = tan(deg2rad(rad2deg(yaw)+180.0));
-  srv.request.max.x = ((srv.request.max.y + yn - srv.request.max.y) / (m)) + srv.request.max.x; 
-  srv.request.max.y += yn;
-  
+  if (rad2deg(yaw) < 0)
+    yaw = deg2rad(180 + (180 + rad2deg(yaw)));
 
-  std::cout << srv.request.max.x << " :: " << srv.request.max.y << std::endl;
-  std::cout << " ###### " << std::endl;
+  if (rad2deg(yaw) >= 0 && rad2deg(yaw) <= 45)
+  {
+    srv.request.max.x = int(xpos) + 1;
+    srv.request.max.y = int(ypos) + 3 * bb_depth;
+    srv.request.max.z = bb_height;
 
+    srv.request.min.x = int(xpos) - bb_width;
+    srv.request.min.y = int(ypos) - 3 * bb_depth;
+    srv.request.min.z = -bb_height;
+  }
+  if (rad2deg(yaw) > 45 &&  rad2deg(yaw) <= 180.0)
+  {
+    srv.request.max.x = int(xpos) + bb_width;
+    srv.request.max.y = int(ypos);
+    srv.request.max.z = bb_height;
 
-  if (isPlc == false)
-	return;
+    srv.request.min.x = int(xpos) - bb_width;
+    srv.request.min.y = int(ypos) - 3 * bb_depth;
+    srv.request.min.z = -bb_height;
+  }
+  if (rad2deg(yaw) > 180 && rad2deg(yaw) <= 225)
+  {
+    srv.request.max.x = int(xpos) + bb_width;
+    srv.request.max.y = int(ypos) + 3 * bb_depth;
+    srv.request.max.z = bb_height;
+
+    srv.request.min.x = int(xpos) - 1;
+    srv.request.min.y = int(ypos) - 3 * bb_depth;
+    srv.request.min.z = -bb_height;
+  }
+  if (rad2deg(yaw) > 225 && rad2deg(yaw) <= 360)
+  {
+    srv.request.max.x = int(xpos) + bb_width;
+    srv.request.max.y = int(ypos) + 3 * bb_depth;
+    srv.request.max.z = bb_height;
+
+    srv.request.min.x = int(xpos) - bb_width;
+    srv.request.min.y = int(ypos);
+    srv.request.min.z = -bb_height;
+  }
+
+  std::cout << "Pos:" << int(xpos) << " :: " << int(ypos) << " :: " << rad2deg(yaw) << std::endl;
+  std::cout << "Pos:" << int(srv.request.max.x) << " :: " << int(srv.request.max.y) << std::endl;
+  std::cout << "Pos:" << int(srv.request.min.x) << " :: " << int(srv.request.min.y) << std::endl;
+  std::cout << "################################################################" << std::endl;
+
+  //if (isPlc == false)
+//	return;
   //isPlc == false;
   // TODO: verknuepfe cloud_in mit dieser Funktion
 
   // limit the octomap region clear rate
-  static int u = 850;
+  static int u = 400;
   u++;
-  if (u < 900)
+  if (u < 800)
    return;
-  u= 880;
+  u= 700;
 
   std::cout << "Hier!!!" <<std::endl;
   //std::cout << "x:" << xpos << " ### y:" << ypos <<std::endl;
   if (client->exists())
   {
-    std::cout << "+++" <<std::endl;
+    //std::cout << "+++" <<std::endl;
   } else { //std::cout << "---" <<std::endl;
   }
   if (client->call(srv))
