@@ -1,9 +1,0 @@
-<launch>
-  <node name="tinkerforge_laser_transform_node" pkg="tinkerforge_laser_transform" type="tinkerforge_laser_transform_node" >
-     <!-- set topic names -->
-    <param name="sub_topic" value="/cloud" type="str" />
-    <param name="pub_topic" value="/cloud_world" type="str" />
-    <param name="imu_msgs" value="true" type="bool" />
-    <param name="gps_msgs" value="true" type="bool" />
-  </node>
-</launch>

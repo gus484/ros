@@ -4,8 +4,8 @@
 <!-- ############################################################### -->
   <node name="sickldmrs" pkg="sick_ldmrs" type="sickldmrs.py" output="screen">
     <param name="frame_id_prefix" value="/cloud" type="str" />
-    <param name="start_angle" value="30" type="int" /> <!-- 50 -->
-    <param name="end_angle" value="-30" type="int" /> <!-- -20 -->
+    <param name="start_angle" value="10" type="int" /> <!-- 50 -->
+    <param name="end_angle" value="-20" type="int" /> <!-- -20 -->
   </node>
 <!-- ############################################################### -->
 <!-- TINKERFORGE LASER TRANSFORM NODE ############################## -->
