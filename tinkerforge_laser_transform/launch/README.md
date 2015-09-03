@@ -1,6 +1,6 @@
 ## Launch-Files
 
-Für den Messvorgang existieren verschiedene Launch-Files, welche jeweils noch konfiguriert werden können. Soll der Debug-Modus der Node robot_localization genutzt werden, so muss der Speicherpfad des Parameters "debug_out_file" angepasst werden.
+Für den Messvorgang existieren verschiedene Launch-Files, welche jeweils noch konfiguriert werden können. Soll der Debug-Modus der Node robot_localization genutzt werden, so muss der Speicherpfad des Parameters "debug_out_file" angepasst werden. Ebenso bei Einsatz von Rviz der Pfad zum Urdf-File des Parameters "robot_description". Soll das Tinkerforge GPS-Bricklet eingesetzt werden, ist der Parameter "gps_msgs" der Node tinkerforge_laser_transform auf true zu setzen.
 
 ### Starten eines Launch-Files
 
