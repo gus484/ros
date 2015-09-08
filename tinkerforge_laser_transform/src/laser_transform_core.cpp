@@ -283,9 +283,13 @@ void LaserTransform::checkConvergenceSpeed()
   {
     int16_t ang_x, ang_y, ang_z;
     imu_get_angular_velocity(&imu, &ang_x, &ang_y, &ang_z);
-    if (ang_x > 50 || ang_y > 50 || ang_z > 50)
+    // Realistische Drehraten: Siehe IPython Notebook,
+    // Kapitel "Roll-/Pitch-/Yawrate"
+    // http://nbviewer.ipython.org/github/balzer82/ICINCO-2014/blob/master/Extended-Kalman-Filter-CTRV-Attitude.ipynb
+    if (ang_x > 5 || ang_x < -5 || ang_y > 5 || ang_y < -5 || ang_z > 5 || ang_z < -5)
     {
-      imu_set_convergence_speed(&imu, 80);
+	  // Fast turning: No Magnetic Field, just RotationRate
+      imu_set_convergence_speed(&imu, 0);
     }
     else
       imu_set_convergence_speed(&imu, imu_convergence_speed);
@@ -314,8 +318,8 @@ void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
 
     // magnetic field from mG to T
     mf_msg.magnetic_field.x = x/10000000.0;
-    mf_msg.magnetic_field.x = y/10000000.0;
-    mf_msg.magnetic_field.x = z/10000000.0;
+    mf_msg.magnetic_field.y = y/10000000.0; // ich nehme an hier sollte .y hin?!
+    mf_msg.magnetic_field.z = z/10000000.0; // ich nehme an hier sollte .z hin?!
 
     for (int i = 0 ; i < 9 ; i++)
       mf_msg.magnetic_field_covariance[i] = 0.01;
@@ -357,7 +361,7 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
 
     if (this->velocity > 0.0)
     {
-      this->velocity_gps = (speed*100) / 3.6; // in m/s²
+      this->velocity_gps = (speed*100) / 3.6; // in m/s
       this->course_gps = deg2rad(course*100);
       ROS_INFO_STREAM("GPS-Velocity:" << this->velocity_gps);
       ROS_INFO_STREAM("GPS-Course:" << this->course_gps);
