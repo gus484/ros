@@ -1,0 +1,8 @@
+controller_list:
+  - name: fake_Arbeitsgeraet_controller
+    joints:
+      - trans_schlitten
+      - rot_dreharm_hauptarm
+      - rot_hauptarm_nebenarm
+      - rot_nebenarm_schnellwechselsystem
+      - rot_schnellwechselsystem_maehkopf

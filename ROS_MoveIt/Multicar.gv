@@ -1,0 +1,41 @@
+digraph G {
+node [shape=box];
+"base_link" [label="base_link"];
+"Multicar_M26" [label="Multicar_M26"];
+"Verschubrahmen" [label="Verschubrahmen"];
+"Verschubschlitten" [label="Verschubschlitten"];
+"Dreharm" [label="Dreharm"];
+"Hauptarm" [label="Hauptarm"];
+"Nebenarm" [label="Nebenarm"];
+"Schnellwechselsystem" [label="Schnellwechselsystem"];
+"Maehkopf" [label="Maehkopf"];
+"b_l_wheel" [label="b_l_wheel"];
+"b_r_wheel" [label="b_r_wheel"];
+"f_l_wheel" [label="f_l_wheel"];
+"f_r_wheel" [label="f_r_wheel"];
+node [shape=ellipse, color=blue, fontcolor=blue];
+"base_link" -> "fix_multicar" [label="xyz: 0 0 0 \nrpy: 0 -0 0"]
+"fix_multicar" -> "Multicar_M26"
+"Multicar_M26" -> "fix" [label="xyz: 3.925 0 0.6885 \nrpy: 0 -0 0"]
+"fix" -> "Verschubrahmen"
+"Verschubrahmen" -> "trans_schlitten" [label="xyz: 0 0 0 \nrpy: 0 -0 0"]
+"trans_schlitten" -> "Verschubschlitten"
+"Verschubschlitten" -> "gesteckt" [label="xyz: 0.369 0 0 \nrpy: 0 -0 0"]
+"gesteckt" -> "Dreharm"
+"Dreharm" -> "rot_dreharm_hauptarm" [label="xyz: 0 -0.084 0.633 \nrpy: 0 -0 0"]
+"rot_dreharm_hauptarm" -> "Hauptarm"
+"Hauptarm" -> "rot_hauptarm_nebenarm" [label="xyz: 0 0.05 -1.443 \nrpy: 0 -0 0"]
+"rot_hauptarm_nebenarm" -> "Nebenarm"
+"Nebenarm" -> "rot_nebenarm_schnellwechselsystem" [label="xyz: 0 0.11 0.954 \nrpy: 0 -0 0"]
+"rot_nebenarm_schnellwechselsystem" -> "Schnellwechselsystem"
+"Schnellwechselsystem" -> "rot_schnellwechselsystem_maehkopf" [label="xyz: 0 0 -0.145 \nrpy: 0 -0 0"]
+"rot_schnellwechselsystem_maehkopf" -> "Maehkopf"
+"Multicar_M26" -> "joint_b_l_wheel" [label="xyz: 0 0.64 0.365 \nrpy: 0 -0 0"]
+"joint_b_l_wheel" -> "b_l_wheel"
+"Multicar_M26" -> "joint_b_r_wheel" [label="xyz: 0 -0.64 0.365 \nrpy: 0 -0 0"]
+"joint_b_r_wheel" -> "b_r_wheel"
+"Multicar_M26" -> "joint_f_l_wheel" [label="xyz: 2.675 0.64 0.365 \nrpy: 0 -0 0"]
+"joint_f_l_wheel" -> "f_l_wheel"
+"Multicar_M26" -> "joint_f_r_wheel" [label="xyz: 2.675 -0.64 0.365 \nrpy: 0 -0 0"]
+"joint_f_r_wheel" -> "f_r_wheel"
+}

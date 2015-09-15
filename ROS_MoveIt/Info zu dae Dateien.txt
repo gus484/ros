@@ -1,0 +1,10 @@
+Die in diesem Verzeichnis abgespeicherten .dae Dateien sind simplifizierte Versionen der .stl Dateien für ROS.
+
+Das bedeutet, dass die Anzahl der 'Faces' mit Meshlab auf 1000 begrenzt wurde um eine relativ schnelle Kollisionsanalyse zu ermöglichen. Das betrifft vor allem Bohrungen oder Abrundungen. Diese sind nun nicht mehr 'schön rund', sondern z.B. 8-Ecke o.ä.
+
+From the menu, select Filters > Remeshing, simplification and construction > Quadratic Edge Collapse Detection
+
+Why?: 
+For collision checking using the ROS motion planning (/moveit) packages, as few faces per link as possible are recommended for the collision meshes that you put into the URDF (ideally less than 1000). If possible, approximating the meshes with other primitives is encouraged.
+
+HowTo: http://www.shapeways.com/tutorials/polygon_reduction_with_meshlab

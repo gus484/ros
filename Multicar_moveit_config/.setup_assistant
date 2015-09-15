@@ -1,0 +1,8 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: ""
+    relative_path: /home/paul/ROS_MoveIt/multicar.urdf
+  SRDF:
+    relative_path: config/Multicar.srdf
+  CONFIG:
+    generated_timestamp: 1424539781

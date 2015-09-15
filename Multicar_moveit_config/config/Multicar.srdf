@@ -1,0 +1,102 @@
+<?xml version="1.0" ?>
+<!--This does not replace URDF, and is not an extension of URDF.
+    This is a format for representing semantic information about the robot structure.
+    A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
+-->
+<robot name="Multicar">
+    <!--GROUPS: Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
+    <!--LINKS: When a link is specified, the parent joint of that link (if it exists) is automatically included-->
+    <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
+    <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
+    <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
+    <group name="Arbeitsgeraet">
+        <joint name="trans_schlitten" />
+        <joint name="gesteckt" />
+        <joint name="rot_dreharm_hauptarm" />
+        <joint name="rot_hauptarm_nebenarm" />
+        <joint name="rot_nebenarm_schnellwechselsystem" />
+        <joint name="rot_schnellwechselsystem_maehkopf" />
+    </group>
+    <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
+    <end_effector name="Endeffektor" parent_link="Maehkopf" group="Arbeitsgeraet" />
+    <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
+    <virtual_joint name="virtual_joint" type="planar" parent_frame="world" child_link="base_link" />
+    <!--PASSIVE JOINT: Purpose: this element is used to mark joints that are not actuated-->
+    <passive_joint name="joint_b_l_wheel" />
+    <passive_joint name="joint_b_r_wheel" />
+    <passive_joint name="joint_f_l_wheel" />
+    <passive_joint name="joint_f_r_wheel" />
+    <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
+    <disable_collisions link1="Dreharm" link2="Hauptarm" reason="Adjacent" />
+    <disable_collisions link1="Dreharm" link2="Multicar_M26" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="Nebenarm" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="Schnellwechselsystem" reason="User" />
+    <disable_collisions link1="Dreharm" link2="Verschubrahmen" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="Verschubschlitten" reason="Adjacent" />
+    <disable_collisions link1="Dreharm" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="base_link" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="Dreharm" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="Maehkopf" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="Multicar_M26" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="Nebenarm" reason="Adjacent" />
+    <disable_collisions link1="Hauptarm" link2="Schnellwechselsystem" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="Verschubrahmen" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="Verschubschlitten" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="base_link" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="Hauptarm" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="Maehkopf" link2="Nebenarm" reason="User" />
+    <disable_collisions link1="Maehkopf" link2="Schnellwechselsystem" reason="Adjacent" />
+    <disable_collisions link1="Maehkopf" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Maehkopf" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Maehkopf" link2="base_link" reason="Never" />
+    <disable_collisions link1="Multicar_M26" link2="Nebenarm" reason="Never" />
+    <disable_collisions link1="Multicar_M26" link2="Schnellwechselsystem" reason="Never" />
+    <disable_collisions link1="Multicar_M26" link2="Verschubrahmen" reason="Adjacent" />
+    <disable_collisions link1="Multicar_M26" link2="Verschubschlitten" reason="Never" />
+    <disable_collisions link1="Multicar_M26" link2="b_l_wheel" reason="Adjacent" />
+    <disable_collisions link1="Multicar_M26" link2="b_r_wheel" reason="Adjacent" />
+    <disable_collisions link1="Multicar_M26" link2="base_link" reason="Adjacent" />
+    <disable_collisions link1="Multicar_M26" link2="f_l_wheel" reason="Adjacent" />
+    <disable_collisions link1="Multicar_M26" link2="f_r_wheel" reason="Adjacent" />
+    <disable_collisions link1="Nebenarm" link2="Schnellwechselsystem" reason="Adjacent" />
+    <disable_collisions link1="Nebenarm" link2="Verschubrahmen" reason="Never" />
+    <disable_collisions link1="Nebenarm" link2="Verschubschlitten" reason="Never" />
+    <disable_collisions link1="Nebenarm" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Nebenarm" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Nebenarm" link2="base_link" reason="Never" />
+    <disable_collisions link1="Nebenarm" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="Nebenarm" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="Schnellwechselsystem" link2="Verschubrahmen" reason="Never" />
+    <disable_collisions link1="Schnellwechselsystem" link2="Verschubschlitten" reason="User" />
+    <disable_collisions link1="Schnellwechselsystem" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Schnellwechselsystem" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Schnellwechselsystem" link2="base_link" reason="Never" />
+    <disable_collisions link1="Schnellwechselsystem" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="Schnellwechselsystem" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="Verschubrahmen" link2="Verschubschlitten" reason="Adjacent" />
+    <disable_collisions link1="Verschubrahmen" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Verschubrahmen" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Verschubrahmen" link2="base_link" reason="Never" />
+    <disable_collisions link1="Verschubrahmen" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="Verschubrahmen" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="Verschubschlitten" link2="b_l_wheel" reason="Never" />
+    <disable_collisions link1="Verschubschlitten" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="Verschubschlitten" link2="base_link" reason="Never" />
+    <disable_collisions link1="Verschubschlitten" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="Verschubschlitten" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="b_l_wheel" link2="b_r_wheel" reason="Never" />
+    <disable_collisions link1="b_l_wheel" link2="base_link" reason="Never" />
+    <disable_collisions link1="b_l_wheel" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="b_l_wheel" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="b_r_wheel" link2="base_link" reason="Never" />
+    <disable_collisions link1="b_r_wheel" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="b_r_wheel" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="base_link" link2="f_l_wheel" reason="Never" />
+    <disable_collisions link1="base_link" link2="f_r_wheel" reason="Never" />
+    <disable_collisions link1="f_l_wheel" link2="f_r_wheel" reason="Never" />
+</robot>

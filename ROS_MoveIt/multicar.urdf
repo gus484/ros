@@ -1,0 +1,297 @@
+<?xml version="1.0"?>
+<robot name="Multicar">
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+      	<cylinder length="0" radius="0"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </visual>
+  </link>
+
+  <joint name="fix_multicar" type="fixed">
+    <parent link="base_link"/>
+    <child link="Multicar_M26"/>
+    <origin xyz="0 0 0" rpy="0 0 0" /> 
+    <axis xyz="0 1 0" rpy="0 0 0" />
+  </joint> 
+
+  <link name="Multicar_M26">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Multicar_M26.dae" scale="1 1 1"/>
+      </geometry>
+      <material name="white">
+		<color rgba="1 1 1 0.6"/>
+	  </material>
+    </visual>
+    <collision>
+      <geometry>
+      	<!-- Hier ist eine Box besser, da sie noch einen Sicherheitsabstand rund um das
+      		Fahrerhaus realisieren kann.
+      		Die Box Abmessungen sind ausgehend von mitte Hinterachse zentriert, deshalb
+      		x = (2.675+1.020)*2
+      		y = 1.80 (wegen Spiegeln)
+      		z = 2.2*2 -->
+        <box size="7.38 1.8 4.4"/>
+      </geometry>
+    </collision>
+  </link>
+
+<!-- Wheels -->
+
+  <!-- Front Right Wheel -->
+  <link name="f_r_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570795 0 0" />
+      <geometry>s
+          <cylinder length="0.3" radius="0.365" />
+      </geometry>
+      <material name="black">
+        <color rgba="0.05 0.05 0.05 1"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="joint_f_r_wheel" type="continuous">
+    <parent link="Multicar_M26"/>
+    <child link="f_r_wheel"/>
+    <origin xyz="2.675 -0.64 0.365" rpy="0 0 0" /> 
+    <axis xyz="0 1 0" rpy="0 0 0" />
+  </joint>  
+
+  <!-- Back Right Wheel -->
+  <link name="b_r_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570795 0 0" />
+      <geometry>
+          <cylinder length="0.3" radius="0.365" />
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  <joint name="joint_b_r_wheel" type="continuous">
+    <parent link="Multicar_M26"/>
+    <child link="b_r_wheel"/>
+    <origin xyz="0 -0.64 0.365" rpy="0 0 0" /> 
+    <axis xyz="0 1 0" rpy="0 0 0" />
+  </joint>  
+
+  <!-- Front Left Wheel -->
+  <link name="f_l_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570795 0 0" />
+      <geometry>
+          <cylinder length="0.3" radius="0.365" />
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  <joint name="joint_f_l_wheel" type="continuous">
+    <parent link="Multicar_M26"/>
+    <child link="f_l_wheel"/>
+    <origin xyz="2.675 0.64 0.365" rpy="0 0 0" /> 
+    <axis xyz="0 1 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- Back Left Wheel -->
+  <link name="b_l_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570795 0 0" />
+      <geometry>
+          <cylinder length="0.3" radius="0.365" />
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  <joint name="joint_b_l_wheel" type="continuous">
+    <parent link="Multicar_M26"/>
+    <child link="b_l_wheel"/>
+    <origin xyz="0 0.64 0.365" rpy="0 0 0" /> 
+    <axis xyz="0 1 0" rpy="0 0 0" />
+  </joint>
+<!-- Wheels -->
+
+
+  <joint name="fix" type="fixed">
+    <parent link="Multicar_M26"/>
+    <child link="Verschubrahmen"/>
+    <!-- x = 4.294-0.369 = 3.925 
+		 z = Reifenradius/2 + 323.5 -->
+    <origin xyz="3.925 0 0.6885"/>
+  </joint>
+
+  <link name="Verschubrahmen">
+    <visual>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Verschubrahmen.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+      	<box size="0.1 1.8 0.4"/>
+        <!--<mesh filename="file:///home/markus/multicar/ROS_MoveIt/Verschubrahmen.dae" scale="1 1 1"/>-->
+      </geometry>
+    </collision>
+  </link>
+
+
+  <joint name="trans_schlitten" type="prismatic">
+    <parent link="Verschubrahmen"/>
+    <child link="Verschubschlitten"/>
+    <origin xyz="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.612" upper="0.612" effort="10000" velocity="1"/>
+  </joint>
+
+
+  <link name="Verschubschlitten">
+    <visual>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Verschubschlitten.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Verschubschlitten.dae" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+
+  <joint name="gesteckt" type="fixed">
+    <parent link="Verschubschlitten"/>
+    <child link="Dreharm"/>
+    <origin xyz="0.369 0 0"/>
+  </joint>
+
+
+  <link name="Dreharm">
+    <visual>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Dreharm.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+      	<box size="0.1 0.3 0.9"/>
+        <!--<mesh filename="file:///home/markus/multicar/ROS_MoveIt/Dreharm.dae" scale="1 1 1"/>-->
+      </geometry>
+    </collision>
+  </link>
+
+
+  <joint name="rot_dreharm_hauptarm" type="revolute">
+    <parent link="Dreharm"/>
+    <child link="Hauptarm"/>
+    <!--die Z-Koordinate muss noch mal bestimmt werden von mitte Verschubschlitten bis Auge Dreharm, wo der Hauptarm gelagert ist-->
+    <origin xyz="0 -0.084 0.633"/>
+    <axis xyz="1 0 0"/>
+    <!--der Hauptarm haengt nach unten in Standardconfig
+        die Winkel laut CAD Analyse: 03_Dreharm_Hauptarm.pdf
+        lower = 53Grad = 0.92455rad und +2Pi weil neg. in MoveIt nicht so funktioniert
+        upper = 161Grad = 2.8055rad und +2Pi weil neg. in MoveIt nicht so funktioniert -->
+    <limit effort="1000.0" lower="3.4746" upper="5.3586" velocity="0.5"/>
+  </joint>
+
+
+  <link name="Hauptarm">
+    <visual>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Hauptarm.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Hauptarm.dae" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+
+  <joint name="rot_hauptarm_nebenarm" type="revolute">
+    <parent link="Hauptarm"/>
+    <child link="Nebenarm"/>
+    <origin xyz="0 0.05 -1.443"/>
+    <axis xyz="1 0 0"/>
+    <!--der Nebenarm liegt an Hauptarm an in 0-Stellung
+        die Winkel laut CAD Analyse: 04_Hauptarm_Nebenarm.pdf
+        lower = 26Grad = 0.45355rad und Minus wegen Rechte Hand System
+        upper = 159Grad = 2.77366rad und Minus wegen Rechte Hand System -->
+    <limit effort="1000.0" lower="3.5095" upper="5.82963" velocity="0.5"/>
+  </joint>
+
+
+  <link name="Nebenarm">
+    <visual>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Nebenarm.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Nebenarm.dae" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+
+  <joint name="rot_nebenarm_schnellwechselsystem" type="revolute">
+    <parent link="Nebenarm"/>
+    <child link="Schnellwechselsystem"/>
+    <origin xyz="0 0.11 0.954"/>
+    <axis xyz="1 0 0"/>
+    <!--das Schnellwechselsystem zeigt nach oben in 0-Stellung,
+    	deshalb muss erst mal um 180Grad=3.14rad gedreht werden und dann
+        die Winkel laut CAD Analyse: 05_Schnellwechselsystem_Nebenarm.pdf
+        lower = 180-88Grad = 1.60488rad
+        upper = 180+81Grad = 4.553	rad -->
+    <limit effort="1000.0" lower="1.60489" upper="4.553" velocity="0.5"/>
+  </joint>
+
+
+  <link name="Schnellwechselsystem">
+    <visual>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Schnellwechselsystem.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Schnellwechselsystem.dae" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+
+  <joint name="rot_schnellwechselsystem_maehkopf" type="revolute">
+    <parent link="Schnellwechselsystem"/>
+    <child link="Maehkopf"/>
+    <origin xyz="0 0 -0.145"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000.0" lower="4.7298" upper="6.28318" velocity="0.5"/>
+  </joint>
+
+
+  <link name="Maehkopf">
+    <visual>
+      <geometry>
+      	<mesh filename="file:///home/markus/multicar/ROS_MoveIt/Maehkopf.dae" scale="1 1 1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="file:///home/markus/multicar/ROS_MoveIt/Maehkopf_ConvexHull.dae" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+</robot>
