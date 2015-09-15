@@ -98,3 +98,21 @@ http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 ####Zusätzliche Pakete installieren
 
 `sudo apt-get install ros-indigo-moveit-core ros-indigo-robot-localization`
+
+####Messung starten
+
+*roscore starten*
+
+`roscore`
+
+*Je nach Anwendung entsprechendes launch file aus der [tinkerforge_laser_transform Node](https://github.com/gus484/ros/tree/master/tinkerforge_laser_transform/launch) im Verzeichnis launch starten. Beispiel:*
+
+`cd ~/catkin_ws`
+
+`roslaunch src/tinkerforge_laser_transform/launch/Messung.launch`
+
+####Aufzeichnung und Wiedergabe von Messungen
+
+*Siehe Anleitung im Git-Repository:*
+
+https://github.com/gus484/ros/tree/master/recorded_maps
