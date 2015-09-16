@@ -33,6 +33,7 @@
 #define GPS_LOGFILE false
 #define VELO_LOGFILE false
 #define FULL_SENSOR_LOGFILE true
+#define TIME_TO_STOP 3
 #define LOGFILE_PATH "/home/vmuser/logs/"
 
 /*----------------------------------------------------------------------
@@ -96,16 +97,29 @@ LaserTransform::LaserTransform()
 
 LaserTransform::~LaserTransform()
 {
+  // clean up tf devices
   if (is_imu_connected)
   {
-    // disconnect tinkerforge
     imu_leds_off(&imu);
-    ipcon_destroy(&ipcon);
+    imu_destroy(&imu);    
   }
   if (is_imu_v2_connected)
   {
     imu_v2_leds_off(&imu_v2);
     imu_v2_destroy(&imu_v2);
+  }
+  if (is_gps_connected)
+  {
+    gps_destroy(&gps);
+  }
+  if (is_idi4_connected)
+  {
+    industrial_digital_in_4_destroy(&idi4);
+  }
+  if (is_imu_v2_connected || is_imu_connected || is_idi4_connected ||
+      is_gps_connected)
+  {
+    ipcon_destroy(&ipcon);
   }
   // close gps logfile
   if (gps_log.is_open())
@@ -187,7 +201,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
         return;
       else
         imu_set_convergence_speed(&imu, imu_convergence_speed);
-	*/
+      */
       imu_get_quaternion(&imu, &x, &y, &z, &w);
 
       imu_get_all_data(&imu, &acc_x, &acc_y, &acc_z, &mag_x, &mag_y,
@@ -237,7 +251,6 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
         0.1, 0.1, 0.1};
 
     imu_msg.orientation_covariance = oc;
-    //imu_msg.orientation_covariance[0] = -1;
 
     // velocity from °/14.375 to rad/s
     imu_msg.angular_velocity.x = deg2rad(ang_x);
@@ -250,7 +263,6 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
         0.1, 0.1, 0.1,
         0.1, 0.1, 0.1};
     imu_msg.angular_velocity_covariance = vc;
-    //imu_msg.angular_velocity_covariance[0] = -1;
 
     // acceleration from mG to m/s²
     imu_msg.linear_acceleration.x = acc_x;
@@ -263,7 +275,6 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
         0.1, 0.1, 0.1,
         0.1, 0.1, 0.1};
     imu_msg.linear_acceleration_covariance = lac;
-    //imu_msg.linear_acceleration_covariance[0] = -1;
 
     pub_message->publish(imu_msg);
 
@@ -288,7 +299,7 @@ void LaserTransform::checkConvergenceSpeed()
     // http://nbviewer.ipython.org/github/balzer82/ICINCO-2014/blob/master/Extended-Kalman-Filter-CTRV-Attitude.ipynb
     if (ang_x > 5 || ang_x < -5 || ang_y > 5 || ang_y < -5 || ang_z > 5 || ang_z < -5)
     {
-	  // Fast turning: No Magnetic Field, just RotationRate
+      // Fast turning: No Magnetic Field, just RotationRate
       imu_set_convergence_speed(&imu, 0);
     }
     else
@@ -318,8 +329,8 @@ void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
 
     // magnetic field from mG to T
     mf_msg.magnetic_field.x = x/10000000.0;
-    mf_msg.magnetic_field.y = y/10000000.0; // ich nehme an hier sollte .y hin?!
-    mf_msg.magnetic_field.z = z/10000000.0; // ich nehme an hier sollte .z hin?!
+    mf_msg.magnetic_field.y = y/10000000.0;
+    mf_msg.magnetic_field.z = z/10000000.0;
 
     for (int i = 0 ; i < 9 ; i++)
       mf_msg.magnetic_field_covariance[i] = 0.01;
@@ -461,13 +472,6 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
     // transform pcl to laser position
     pcl_ros::transformPointCloud("/base_link", laser_pose,  pcl_out, pcl_out);
 
-/*
-    if (FULL_SENSOR_LOGFILE)
-    {
-      full_log << msg->header.stamp;
-    }*/
-
-
     // publish transformed plc
     publish_new_pcl = true;
     new_pcl_filtered = false;
@@ -541,8 +545,7 @@ void LaserTransform::callbackEnumerate(const char *uid, const char *connected_ui
     // Create IndustrialDigitalIn4 device object
     industrial_digital_in_4_create(&(lt->idi4), uid, &(lt->ipcon));
 
-    // Register threshold reached callback to function cb_reached
-
+    // Register callback for interrupts
     industrial_digital_in_4_register_callback(&(lt->idi4),
       INDUSTRIAL_DIGITAL_IN_4_CALLBACK_INTERRUPT,
       (void*)callbackIdi4,
@@ -709,12 +712,12 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   tf::TransformBroadcaster odom_broadcaster;
   ros::Time current_time = ros::Time::now();
 
-  // check if vehicle stand still, after 3 seconds without rev
-  if (ros::Time::now().sec - last_rev.sec >= 3)
+  // check if vehicle stand still, after TIME_TO_STOP seconds without rev
+  if (ros::Time::now().sec - last_rev.sec >= TIME_TO_STOP)
   {
     if (isStand == false)
     {
-      ROS_INFO_STREAM("STAND");
+      ROS_INFO_STREAM("Vehicle stand still!");
       isStand = true;
     }
     velocity = 0.0;
@@ -757,6 +760,7 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.twist.twist.angular.x = 0;
 
   // twist.covariance
+  // TODO: to fill with plausible values
   boost::array<const double, 36> tc =
     { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -765,6 +769,7 @@ void LaserTransform::publishOdometryMessage(ros::Publisher *pub_message)
   odo_msg.twist.covariance = tc;
 
   // pose.covariance
+  // TODO: to fill with plausible values
   boost::array<const double, 36> pc =
     { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -816,6 +821,7 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
 
   yaw = yy;
 
+  // calculate points for clear bounding box
   if (rad2deg(yaw) < 0)
     yaw = deg2rad(180 + (180 + rad2deg(yaw)));
 
@@ -871,14 +877,14 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
   // TODO: verknuepfe cloud_in mit dieser Funktion
 
   // limit the octomap region clear rate
+  // wenn versucht wird die octomap zu leeren, bevor diese daten enthaelt,
+  // stuertzt die octomap node ab
   static int u = 400;
   u++;
   if (u < 800)
    return;
   u= 700;
 
-  std::cout << "Hier!!!" <<std::endl;
-  //std::cout << "x:" << xpos << " ### y:" << ypos <<std::endl;
   if (client->exists())
   {
     //std::cout << "+++" <<std::endl;
