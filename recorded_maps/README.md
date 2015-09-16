@@ -1,6 +1,6 @@
 # Aufzeichnen und Wiedergeben von Messungen
 
-Zur Aufzeichnung und Wiedergabe von Messfahrten kann das Tool rosbag eingesetzt werden. Nachfolgend wird kurz der Ablauf eines solchen Szenarios beschrieben. Die Verwendung von rosbag und mögliche Parameter können auf der ROS-Wiki-Seite [rosbag](http://wiki.ros.org/rosbag) eingesehen werden.
+Zur Aufzeichnung und Wiedergabe von Messfahrten kann das Tool rosbag eingesetzt werden. Nachfolgend wird kurz der Ablauf eines solchen Szenarios beschrieben. Die Verwendung von rosbag und mögliche Parameter können auf der ROS-Wiki-Seite [rosbag](http://wiki.ros.org/rosbag) eingesehen werden. Es ist sinnvoll die aufgenommenen Daten zu filtern, sodass lediglich die Sensorwerte erhalten bleiben, damit beispielsweise keine Sprünge durch doppelte Lokalisierung auftreten. Im entsprechenden Beispiel bleiben die IMU-Daten, die Odometrie-Daten und die Punktwolke des Laserscanners erhalten.
 
 ## Aufzeichnen einer Messung
 
