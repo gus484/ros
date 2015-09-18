@@ -14,13 +14,23 @@
 
 *Anweisungen folgen und dabei die Variante Desktop-Full Install wählen*
 
-http://wiki.ros.org/indigo/Installation/Ubuntu
+http://wiki.ros.org/jade/Installation/Ubuntu
+
+Zusätzlich sind noch folgende ROS Packages notwendig:
+
+`sudo apt-get install ros-jade-geographic-msgs ros-jade-geodesy ros-jade-moveit-core ros-jade-robot-localization`
+
 
 ####Einrichten des Workspace
 
 *Anweisungen folgen und den Workspace einrichten*
 
 http://wiki.ros.org/catkin/Tutorials/create_a_workspace
+
+Hinweis: Falls anaconda Python Distribution installiert ist, gibt es Konflikte mit dem `catkin_pkg`, was nicht gefunden wird. Einfachste Möglichkeit: In der `~/.bashrc` einfach die Zeile `export PATH="/home/pbalzer/anaconda/bin:$PATH"` auskommentieren und Terminal neu starten. Dann wird das System Python genutzt und `catkin_make` funktioniert.
+
+Die nun erstellte `setup.bash` in `catkin_ws/devel/` sollte noch in die `~/.bashrc` aufgenommen werden.
+`source /home/pbalzer/catkin_ws/devel/setup.bash`
 
 ####Download und Installation des SICK LD-MRS Treibers
 
@@ -40,7 +50,7 @@ http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 
 `mv electric csiro-asl-ros-pkg`
 
-`cp csiro-asl-ros-pkg ~/catkin_ws/src`
+`cp csiro-asl-ros-pkg -r ~/catkin_ws/src`
 
 *Kompilieren des Programms im Workspace*
 
@@ -67,7 +77,7 @@ http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 
 *Verschieben in den Workspace und kompilieren*
 
-`cp imu_tools ~/catkin_ws/src`
+`cp imu_tools -r ~/catkin_ws/src`
 
 `cd ~/catkin_ws`
 
@@ -83,11 +93,14 @@ http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 
 `cp  multicar_hydraulic tinkerforge_laser_transform tinycan Multicar_moveit_config ~/catkin_ws/src -R`
 
-*URDF-Datei und .dae-Datein holen, Arbeitsordner anlegen und Dateien verschieben:*
+####Installation von Octomap Server
 
-`mkdir ~/ROS_Moveit`
+`sudo apt-get install ros-jade-octomap-msgs ros-jade-octomap-ros`
 
-`cp ROS_MoveIt/*.dae ROS_MoveIt/multicar.urdf ~/ROS_Moveit`
+Für Jade ist Octomap Server noch nicht als Paket verfügbar. Da nehmen wir einfach das für Indigo von Github:
+
+`git clone https://github.com/OctoMap/octomap_mapping.git`
+`cp octomap_mapping/ -r ~/catkin_ws/src/`
 
 *Workspace kompilieren*
 
@@ -95,21 +108,28 @@ http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 
 `catkin_make`
 
+Hinweis: Wenn Fehler auftreten, einfach nochmal `catkin_make` ausführen. Durch die Parallelisierung kann es passieren, dass Dateien, die zum Kompilieren notwendig sind, vom anderen Core noch nicht berechnet wurden und dann stoppt es mit Fehler.
+
+![Multithreading Dogs](https://what.thedailywtf.com/uploads/default/11505/6f3925bd03870f21.jpg)
+
 ####Pfade der Multicar Konfiguration anpassen
+
+*URDF-Datei und .dae-Datein aus Git Repository holen, Arbeitsordner anlegen und Dateien verschieben:*
+
+`mkdir ~/ROS_MoveIt`
+
+`cp ROS_MoveIt/*.dae ROS_MoveIt/multicar.urdf ~/ROS_MoveIt`
 
 *Pfade in URDF-Datei anpassen*
 
 `nano ~/ROS_MoveIt/multicar.urdf`
 
-*URDF Pfad im Moveit Paket in folgenden Dateien anpassen:*
+*URDF Pfad im MoveIt Paket in folgenden Dateien anpassen:*
 
 `nano ~/catkin_ws/src/Multicar_moveit_config/.setup_assistant`
 
 `nano ~/catkin_ws/src/Multicar_moveit_config/launch/planning_context.launch`
 
-####Zusätzliche Pakete installieren
-
-`sudo apt-get install ros-indigo-moveit-core ros-indigo-robot-localization`
 
 ####Messung starten
 
@@ -122,6 +142,11 @@ http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 `cd ~/catkin_ws`
 
 `roslaunch src/tinkerforge_laser_transform/launch/Messung.launch`
+
+####Anschauen was abgeht
+
+`rosrun rqt_topic rqt_topic` kann man aktive Topics sehen
+`rosrun rqt_graph rqt_graph` kann man das visualisiert ansehen
 
 ####Aufzeichnung und Wiedergabe von Messungen
 
