@@ -130,6 +130,10 @@ Hinweis: Wenn Fehler auftreten, einfach nochmal `catkin_make` ausführen. Durch 
 
 `nano ~/catkin_ws/src/Multicar_moveit_config/launch/planning_context.launch`
 
+*Pfade in Launchfiles anpassen:*
+
+`nano ~/catkin_ws/src/tinkerforge_laser_transform/launch`
+
 
 ####Messung starten
 
