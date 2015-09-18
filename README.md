@@ -147,6 +147,16 @@ Hinweis: Wenn Fehler auftreten, einfach nochmal `catkin_make` ausführen. Durch 
 
 `roslaunch src/tinkerforge_laser_transform/launch/Messung.launch`
 
+####Laserscanner verbinden
+
+Der Sick Laserscanner (bzw. ibeo Lux) hat eine feste IP, mit der er kommunizieren will. Dazu ist das Notebook mit einem Netzwerk zu verbinden mit fester IP. Der Laserscanner hat
+
+`192.168.0.1`, der Rechner sollte `192.168.0.55` oder sowas haben.
+
+####Tinkerforge Sensoren
+
+Den [Tinkerforge Brick Deamon](http://www.tinkerforge.com/de/doc/Software/Brickd.html) auch installieren.
+
 ####Anschauen was abgeht
 
 `rosrun rqt_topic rqt_topic` kann man aktive Topics sehen
