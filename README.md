@@ -1,14 +1,17 @@
 **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
-- [Installation des ROS-Systems Version Indigo für Ubuntu 14.04 LTS](#)
-- [Einrichten des Workspace](#)
-- [Download und Installation des SICK LD-MRS Treibers](#)
-- [Download und Installation des IMU Plugins für Rviz](#)
-- [Download und Installation der Projekt-Pakete](#)
-- [Pfade der Multicar Konfiguration anpassen](#)
-- [Zusätzliche Pakete installieren](#)
-- [Messung starten](#)
-- [Aufzeichnung und Wiedergabe von Messungen](#)
+- [Installation des ROS-Systems Version Indigo für Ubuntu 14.04 LTS](https://github.com/gus484/ros#installation-des-ros-systems-version-indigo-f%C3%BCr-ubuntu-1404-lts)
+- [Einrichten des Workspace](https://github.com/gus484/ros#einrichten-des-workspace)
+- [Download und Installation des SICK LD-MRS Treibers](https://github.com/gus484/ros#download-und-installation-des-sick-ld-mrs-treibers)
+- [Download und Installation des IMU Plugins für Rviz](https://github.com/gus484/ros#download-und-installation-des-imu-plugins-f%C3%BCr-rviz)
+- [Download und Installation der Projekt-Pakete](https://github.com/gus484/ros#download-und-installation-der-projekt-pakete)
+- [Installation von Octomap Server](https://github.com/gus484/ros#installation-von-octomap-server)
+- [Pfade der Multicar Konfiguration anpassen](https://github.com/gus484/ros#pfade-der-multicar-konfiguration-anpassen)
+- [Messung starten](https://github.com/gus484/ros#messung-starten)
+- [Laserscanner verbinden](https://github.com/gus484/ros#laserscanner-verbinden)
+- [Tinkerforge Sensoren](https://github.com/gus484/ros#tinkerforge-sensoren)
+- [Anschauen was abgeht] (https://github.com/gus484/ros#anschauen-was-abgeht)
+- [Aufzeichnung und Wiedergabe von Messungen](https://github.com/gus484/ros#aufzeichnung-und-wiedergabe-von-messungen)
 
 ####Installation des ROS-Systems Version Indigo für Ubuntu 14.04 LTS
 
@@ -18,7 +21,7 @@ http://wiki.ros.org/jade/Installation/Ubuntu
 
 Zusätzlich sind noch folgende ROS Packages notwendig:
 
-`sudo apt-get install ros-jade-geographic-msgs ros-jade-geodesy ros-jade-moveit-core ros-jade-robot-localization`
+`sudo apt-get install ros-jade-geographic-msgs ros-jade-geodesy ros-jade-moveit-core ros-jade-robot-localization ros-jade-nmea-navsat-driver`
 
 
 ####Einrichten des Workspace
