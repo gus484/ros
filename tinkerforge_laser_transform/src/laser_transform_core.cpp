@@ -101,7 +101,7 @@ LaserTransform::~LaserTransform()
   if (is_imu_connected)
   {
     imu_leds_off(&imu);
-    imu_destroy(&imu);    
+    imu_destroy(&imu);
   }
   if (is_imu_v2_connected)
   {
@@ -194,6 +194,9 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
   {
     sensor_msgs::Imu imu_msg;
 
+    // for the conversions look at rep 103 http://www.ros.org/reps/rep-0103.html
+    // for IMU v1 http://www.tinkerforge.com/de/doc/Software/Bricks/IMU_Brick_C.html#imu-brick-c-api
+    // for IMU v2 http://www.tinkerforge.com/de/doc/Software/Bricks/IMUV2_Brick_C.html#imu-v2-brick-c-api
     if (is_imu_connected)
     {
       // check if imu is initialized
@@ -239,6 +242,7 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
     imu_msg.header.stamp = current_time;
     imu_msg.header.frame_id = "base_link";
 
+    //TODO adapt values for IMU v2
     imu_msg.orientation.x = w;
     imu_msg.orientation.y = z*-1;
     imu_msg.orientation.z = y;
@@ -289,7 +293,6 @@ void LaserTransform::publishImuMessage(ros::Publisher *pub_message)
 
 void LaserTransform::checkConvergenceSpeed()
 {
-  return;
   if (is_imu_connected)
   {
     int16_t ang_x, ang_y, ang_z;
@@ -315,10 +318,27 @@ void LaserTransform::checkConvergenceSpeed()
 void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
 {
   static uint32_t seq = 0;
-  if (is_imu_connected)
+  if (is_imu_connected || is_imu_v2_connected)
   {
     int16_t x = 0, y = 0, z = 0;
-    imu_get_magnetic_field(&imu, &x, &y, &z);
+
+    // for the conversions look at rep 103 http://www.ros.org/reps/rep-0103.html
+    // for IMU v1 http://www.tinkerforge.com/de/doc/Software/Bricks/IMU_Brick_C.html#imu-brick-c-api
+    // for IMU v2 http://www.tinkerforge.com/de/doc/Software/Bricks/IMUV2_Brick_C.html#imu-v2-brick-c-api
+    if (is_imu_connected)
+    {
+      imu_get_magnetic_field(&imu, &x, &y, &z); // nT -> T
+      x = x / 10000000.0;
+      y = y / 10000000.0;
+      z = z / 10000000.0;
+    }
+    else
+    {
+      imu_v2_get_magnetic_field(&imu_v2, &x, &y, &z); // µT -> T
+      x = x / 1000000.0;
+      y = y / 1000000.0;
+      z = z / 1000000.0;
+    }
 
     sensor_msgs::MagneticField mf_msg;
 
@@ -328,12 +348,16 @@ void LaserTransform::publishMagneticFieldMessage(ros::Publisher *pub_message)
     mf_msg.header.frame_id = "base_link";
 
     // magnetic field from mG to T
-    mf_msg.magnetic_field.x = x/10000000.0;
-    mf_msg.magnetic_field.y = y/10000000.0;
-    mf_msg.magnetic_field.z = z/10000000.0;
+    mf_msg.magnetic_field.x = x;
+    mf_msg.magnetic_field.y = y;
+    mf_msg.magnetic_field.z = z;
 
-    for (int i = 0 ; i < 9 ; i++)
-      mf_msg.magnetic_field_covariance[i] = 0.01;
+    boost::array<const double, 9> mfc =
+      { 0.01, 0.01, 0.01,
+        0.01, 0.01, 0.01,
+        0.01, 0.01, 0.01};
+
+    mf_msg.magnetic_field_covariance = mfc;
 
     pub_message->publish(mf_msg);
 
@@ -383,6 +407,7 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
       this->course_gps = 0.0;
     }
 
+    // generate NavSatFix message from gps sensor data
     sensor_msgs::NavSatFix gps_msg;
 
     // message header
@@ -398,6 +423,7 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
     gps_msg.altitude = altitude/100.0;
     gps_msg.position_covariance_type = gps_msg.COVARIANCE_TYPE_UNKNOWN;
 
+    // log gps data if GPS_LOGFILE is true
     if (gps_log.is_open() && GPS_LOGFILE)
     {
       std::string separator = "|";
@@ -411,8 +437,11 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
       gps_log << std::endl;
     }
 
+    // create UTM coordinates from gps data
+    // this is the only use of packages geodesy and geographic_msgs
+    // if the utm conversion not longer necessary, remove also dependencies from
+    // CMakeLists.txt and package.xml and includes
     geographic_msgs::GeoPoint ll;
-    // create UTM from point
     ll = geodesy::toMsg(gps_msg);
     geodesy::UTMPoint pt;
     geodesy::fromMsg(ll,pt);
@@ -429,6 +458,7 @@ void LaserTransform::publishNavSatFixMessage(ros::Publisher *pub_message)
       //std::cout << "COORDS_3:" << (int)(xpos-pt.easting) << "::" << (int)(ypos-pt.northing) << std::endl;
       //ROS_INFO_STREAM("COORDS_3:" << (int)xpos-pt.easting << "::" << (int)ypos-pt.northing);
     }
+    // publish gps msg to ros
     pub_message->publish(gps_msg);
 
     seq++;
@@ -451,16 +481,17 @@ void LaserTransform::callbackPcl(const sensor_msgs::PointCloud2::ConstPtr& msg)
 
 /*----------------------------------------------------------------------
  * callbackOdometryFiltered()
- * Callback function for filtered odometry.
+ * Callback function for filtered odometry from robot localization.
  *--------------------------------------------------------------------*/
 
 void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr& msg)
 {
+  // set curremt position values for octomap clear, x, y, yaw
   xpos = msg->pose.pose.position.x;
   ypos = msg->pose.pose.position.y;
-  
+
   std::cout << "x:" << msg->pose.pose.position.x << std::endl;
-  
+
   tf::Quaternion q (msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
   tf::Matrix3x3 m(q);
   double roll, pitch, yaw;
@@ -799,6 +830,11 @@ void LaserTransform::setLaserPose(double x, double y, double z,
   return;
 }
 
+/*----------------------------------------------------------------------
+ * getAngle()
+ * get angle for clear octomap function
+ *--------------------------------------------------------------------*/
+
 float getAngle(float angle, float rot)
 {
   if ( angle + rot > 360.0)
@@ -821,7 +857,9 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
 
   yaw = yy;
 
-  // calculate points for clear bounding box
+  // calculate points for clearing bounding box, no resize of the tree size
+  // clear quadrants as following, always two
+  // 0°-45° ← # 0°-180 ↓ # 180°-225° → # 225°-360° ↑
   if (rad2deg(yaw) < 0)
     yaw = deg2rad(180 + (180 + rad2deg(yaw)));
 
@@ -885,15 +923,21 @@ void LaserTransform::clearOctomap(ros::ServiceClient *client)
    return;
   u= 700;
 
-  if (client->exists())
+  if (client->exists())  // check if octomap service exists
   {
-    //std::cout << "+++" <<std::endl;
-  } else { //std::cout << "---" <<std::endl;
+    ; // success
   }
-  if (client->call(srv))
+  else
   {
-    //std::cout << "hhh" <<std::endl;
-  } else { //std::cout << "aaa" <<std::endl;
+    ; // fail
+  }
+  if (client->call(srv)) // call octomap clear service
+  {
+    ; // success
+  }
+  else
+  {
+    ; // fail
   }
 }
 

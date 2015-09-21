@@ -7,6 +7,7 @@
 #include "sensor_msgs/JointState.h"
 #include "nav_msgs/Odometry.h"
 #include "laser_transform_core.h"
+#include "octomap_msgs/BoundingBoxQuery.h"
 
 using std::string;
 
@@ -22,6 +23,8 @@ int main (int argc, char **argv)
   bool mf_msgs;
   bool gps_msgs;
   bool odo_msgs;
+  bool bounding_box;
+  bool checkConvergenceSpeed = false;
   string pcl_in_topic;
   string pcl_out_topic;
   string mf_topic;
@@ -50,6 +53,7 @@ int main (int argc, char **argv)
   private_node_handle_.param("odo_filtered", odo_topic_filtered, string("/odometry/filtered"));
   private_node_handle_.param("imu_convergence_speed", imu_convergence_speed, int(20));
   private_node_handle_.param("laser_pose", v, v);
+  private_node_handle_.param("bounding_box", bounding_box, bool(false));
 
   if (v.valid())
   {
@@ -68,6 +72,8 @@ int main (int argc, char **argv)
   {
     node_lt->setLaserPose(0.0,0.0,0.0,0.0,0.0,0.0);
   }
+
+  ros::Rate r(rate);
 
   // Create a subscriber for laser scanner plc data
   ros::Subscriber sub_pcl = n.subscribe(pcl_in_topic.c_str(), 1000, &LaserTransform::callbackPcl, node_lt);
@@ -91,15 +97,19 @@ int main (int argc, char **argv)
   // Create a publisher for odometry mesgs
   ros::Publisher odo_pub = n.advertise<nav_msgs::Odometry>(odo_topic.c_str(),50);
 
-  ros::Rate r(rate);
+  // Create a ServiceClient for octomap_msgs/BoundingBoxQuery
+  r.sleep();
+  ros::ServiceClient client = n.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server_node/clear_bbx");
 
   node_lt->setImuConvergenceSpeed(imu_convergence_speed);
 
   node_lt->init();
-
+  //ros::AsyncSpinner spinner(4); // Use 4 threads
+  //spinner.start();
   while (n.ok())
   {
-    node_lt->checkConvergenceSpeed();
+    if (checkConvergenceSpeed)
+      node_lt->checkConvergenceSpeed();
     if (imu_msgs)
       node_lt->publishImuMessage(&imu_pub);
     if (gps_msgs)
@@ -108,6 +118,8 @@ int main (int argc, char **argv)
       node_lt->publishMagneticFieldMessage(&mf_pub);
     if (odo_msgs)
       node_lt->publishOdometryMessage(&odo_pub);
+    if (bounding_box)
+      node_lt->clearOctomap(&client);
     ros::spinOnce();
     r.sleep();
   }
