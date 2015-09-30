@@ -170,3 +170,25 @@ Den [Tinkerforge Brick Deamon](http://www.tinkerforge.com/de/doc/Software/Brickd
 *Siehe Anleitung im Git-Repository:*
 
 https://github.com/gus484/ros/tree/master/recorded_maps
+
+#### Hydraulik-Steuerung
+
+Für die Hydraulik-Steuerung werden die Pakete *multicar_hydraulic* und *tinycan* benötigt, welche bereits im Schritt *Download und Installation der Projekt-Pakete* installiert wurden. In dem Verzeichnis *launch* der multicar_hydraulic gibt es eine Launch-Datei, welche die beiden Nodes startet.
+
+`cd ~/catkin_ws`
+
+`roslaunch src/multicar_hydraulic/launch/Move.launch`
+
+Hinweis: Damit die Hydraulik angesteuert werden, muss in dem Paket *Multicar_moveit_config* in der Datei *launch/demo.launch* die automatische Generierung von *fake joint states* deaktiviert werden.
+
+`nano ~/catkin_ws/src/Multicar_moveit_config/launch/demo.launch`
+
+<u>Auskommentieren:</u>
+
+`<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">`
+
+`<param name="/use_gui" value="false"/>`
+
+`<rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>`
+
+`</node>`
