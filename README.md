@@ -12,6 +12,7 @@
 - [Tinkerforge Sensoren](https://github.com/gus484/ros#tinkerforge-sensoren)
 - [Anschauen was abgeht] (https://github.com/gus484/ros#anschauen-was-abgeht)
 - [Aufzeichnung und Wiedergabe von Messungen](https://github.com/gus484/ros#aufzeichnung-und-wiedergabe-von-messungen)
+- [Hydraulik-Steuerung](https://github.com/gus484/ros#hydraulik-steuerung)
 
 ####Installation des ROS-Systems Version Indigo für Ubuntu 14.04 LTS
 
@@ -175,15 +176,25 @@ https://github.com/gus484/ros/tree/master/recorded_maps
 
 Für die Hydraulik-Steuerung werden die Pakete *multicar_hydraulic* und *tinycan* benötigt, welche bereits im Schritt *Download und Installation der Projekt-Pakete* installiert wurden. In dem Verzeichnis *launch* der multicar_hydraulic gibt es eine Launch-Datei, welche die beiden Nodes startet.
 
+roscore starten
+
+`roscore`
+
 `cd ~/catkin_ws`
 
 `roslaunch src/multicar_hydraulic/launch/Move.launch`
+
+MoveIt + Rviz starten (neues Terminal)
+
+`cd ~/catkin_ws`
+
+`roslaunch src/Multicar_moveit_config/launch/demo.launch`
 
 Hinweis: Damit die Hydraulik angesteuert werden, muss in dem Paket *Multicar_moveit_config* in der Datei *launch/demo.launch* die automatische Generierung von *fake joint states* deaktiviert werden.
 
 `nano ~/catkin_ws/src/Multicar_moveit_config/launch/demo.launch`
 
-<u>Auskommentieren:</u>
+<u>Auskommentieren mit *<!-- -->*:</u>
 
 `<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">`
 
@@ -192,3 +203,8 @@ Hinweis: Damit die Hydraulik angesteuert werden, muss in dem Paket *Multicar_mov
 `<rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>`
 
 `</node>`
+
+Nachdem Rviz gestartet ist, sollte sich der Ausleger entsprechend der Sensorwerte automatisch positionieren. Die Steuerung erfolg im Unterfenster *Motion Planning* im Reiter *Planning*.
+
+Mittels *Query --> Select Goal State* und der Auswahl *random valid* kann ein gültiger Zustand des Auslegers generiert werden. Man kann so oft auf den Button *Update* klicken, bis eine passable Position gefunden wurde.
+Ein Klick auf den Button *Plan* berechnet die Bewegung zwischen aktueller und neuer Position. Der Button *Execute* führt die Bewegung dann aus indem er die Nachrichten an die *multicat_hydraulic_node* sendet. Der Button *Plan and Execute* vereint beide Schritte mit einem Klick.
