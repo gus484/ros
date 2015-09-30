@@ -1,0 +1,12 @@
+<launch>
+<!-- ############################################################### -->
+<!-- SICKLDMRS NODE (Laserscaner) ################################## -->
+<!-- ############################################################### -->
+  <node name="multicar_hydraulic" pkg="multicar_hydraulic" type="multicar_hydraulic_node" output="screen">
+  </node>
+<!-- ############################################################### -->
+<!-- TINKERFORGE LASER TRANSFORM NODE ############################## -->
+<!-- ############################################################### -->
+  <node name="tinycan" pkg="tinycan" type="can_node" output="screen">
+  </node>
+</launch>
