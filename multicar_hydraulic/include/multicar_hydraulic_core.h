@@ -10,11 +10,18 @@
 
 namespace hydraulic {
 
+// hydraulic pre control states
 #define PRE_CONTROL_SIG_ON 1
 #define PRE_CONTROL_SIG_ON_ACK 2
 #define PRE_CONTROL_SIG_OFF 3
 #define PRE_CONTROL_SIG_OFF_ACK 4
 
+// hydraulic states
+#define HYDRAULIC_HA_NA 0
+#define HYDRAULIC_NA_VS 1
+#define HYDRAULIC_HA_SWK 2
+
+// hydraulic movements
 #define MOVE_HALT 0
 #define MOVE_MOVING 1
 #define MOVE_THRUST_RIGHT 2
@@ -31,6 +38,7 @@ namespace hydraulic {
 
 // hydraulic
 #define CO_HYDRAULIC_ACK 0x180
+#define CO_PRE_CONTROL 0x200
 
 #define NID_Hydraulik 20
 #define NID_Schwenkfix 124 // only virtual
@@ -96,8 +104,11 @@ class Hydraulic {
     void setPWM(uint8_t nid, uint16_t pwm);
   private:
     Ausleger ausleger[5];
+    uint8_t hydraulic_states[3][8];
     ros::Publisher *cpub;
     ros::Publisher *jspub;
+    bool is_man_ctr;
+    bool is_man_ctr_act;
 };
 }
 #endif
