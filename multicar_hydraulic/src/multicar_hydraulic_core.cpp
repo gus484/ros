@@ -89,6 +89,7 @@ void Hydraulic::publishJointStateMessage(int nid, uint32_t pos, uint16_t velo)
   std::vector<double> p;
   std::vector<double> v;
   std::vector<double> e;
+  double tmp = 0.0;
 
   v.push_back(velo/1000.0); // from mm/s to m/s
 
@@ -123,7 +124,13 @@ void Hydraulic::publishJointStateMessage(int nid, uint32_t pos, uint16_t velo)
       e.push_back(1000);
     break;
     case NID_Schwenkfix:
-      p.push_back(0.0079487179*pos + 4.2133);
+      tmp = 0.0079487179*pos + 4.2133;
+      // check if state is outside bounds by a significant margin
+      if (tmp > 6.28318)
+        tmp = 6.28318;
+      else if ( tmp < 4.7298)
+        tmp = 4.7298;
+      p.push_back(tmp);
       //std::cout << "::" << (0.0079487179*pos + 4.2133) << std::endl;
       s.push_back("rot_schnellwechselsystem_maehkopf");
       e.push_back(1000);   
@@ -211,24 +218,24 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
       }
     }
     // Schwenkfix
-    else if (msg->name[i].compare(std::string("")) == 0)
+    else if (msg->name[i].compare(std::string("rot_schnellwechselsystem_maehkopf")) == 0)
     {
-      return;
       // convert from rad to mm
-      p = (msg->position[i] - 5777.0/4680.0) / (59.0/4680.0);
+      p = (125.8064516129 * msg->position[i] - 530.064516129);
       std::cout << "    " << "Velocity soll (real):" << msg->velocity[i] << "m/s" << std::endl;
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
-      std::cout << "    " << "Position ist (real):" << ausleger[IDX_Schnellwechselkopf].position << "mm" << std::endl;
-      ausleger[IDX_Schnellwechselkopf].target_position = p;
-      ausleger[IDX_Schnellwechselkopf].is_moveing = false;
-      if (p < ausleger[IDX_Schnellwechselkopf].position) // TODO: check direction
+      std::cout << "    " << "Position ist (real):" << ausleger[IDX_Schwenkfix].position << "mm" << std::endl;
+      return;
+      ausleger[IDX_Schwenkfix].target_position = p;
+      ausleger[IDX_Schwenkfix].is_moveing = false;
+      if (p < ausleger[IDX_Schwenkfix].position) // TODO: check direction
       {
-        ausleger[IDX_Schnellwechselkopf].state = MOVE_DOWN;
+        ausleger[IDX_Schwenkfix].state = MOVE_DOWN;
       }
       else
       {
-        ausleger[IDX_Schnellwechselkopf].state = MOVE_UP;
+        ausleger[IDX_Schwenkfix].state = MOVE_UP;
       }
       
     }
@@ -293,12 +300,12 @@ void Hydraulic::callbackCanMessageRaw(const tinycan::CanMsg::ConstPtr& msg)
         else
           ausleger[IDX_VERSCHUB].position = 0.120 * thrust - 27.200; // in mm
         
-        ausleger[NID_Schwenkfix].position = 0.039 * pivoting - 97.101; // in mm
+        ausleger[IDX_Schwenkfix].position = 0.039 * pivoting - 97.101; // in mm
         //if (ausleger[NID_Schwenkfix].position < 0)
 		//  ausleger[NID_Schwenkfix].position = 
-        if (DEBUG_CAN_OUTPUT) printf("Verschub:%lf :: Druck Hauptarm:%d :: Schwenken:%lf\n", ausleger[IDX_VERSCHUB].position, main_pressure, ausleger[NID_Schwenkfix].position);
+        if (DEBUG_CAN_OUTPUT) printf("Verschub:%lf :: Druck Hauptarm:%d :: Schwenken:%lf\n", ausleger[IDX_VERSCHUB].position, main_pressure, ausleger[IDX_Schwenkfix].position);
         publishJointStateMessage(NID_THRUST, ausleger[IDX_VERSCHUB].position, 0);
-        publishJointStateMessage(NID_Schwenkfix, ausleger[NID_Schwenkfix].position, 0);
+        publishJointStateMessage(NID_Schwenkfix, ausleger[IDX_Schwenkfix].position, 0);
       }
       break;
       default:

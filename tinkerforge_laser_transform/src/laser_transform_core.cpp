@@ -490,7 +490,7 @@ void LaserTransform::callbackOdometryFiltered(const nav_msgs::Odometry::ConstPtr
   xpos = msg->pose.pose.position.x;
   ypos = msg->pose.pose.position.y;
 
-  std::cout << "x:" << msg->pose.pose.position.x << std::endl;
+  //std::cout << "x:" << msg->pose.pose.position.x << std::endl;
 
   tf::Quaternion q (msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
   tf::Matrix3x3 m(q);

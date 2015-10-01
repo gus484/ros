@@ -4,7 +4,7 @@
 <!-- ############################################################### -->
   <node name="tinkerforge_laser_transform_node" pkg="tinkerforge_laser_transform" type="tinkerforge_laser_transform_node" output="screen">
      <!-- set topic names -->
-    <param name="pcl_in_topic" value="sickldmrs/cloud" type="str" />
+    <param name="pcl_in_topic" value="/cloud" type="str" />
     <param name="pcl_out_topic" value="/cloud_in" type="str" />
     <param name="imu_topic" value="/imu/data" type="str" />
     <param name="imu_msgs" value="false" type="bool" />
