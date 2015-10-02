@@ -19,7 +19,7 @@ namespace hydraulic {
 // hydraulic states
 #define HYDRAULIC_HA_NA 0
 #define HYDRAULIC_NA_VS 1
-#define HYDRAULIC_HA_SWK 2
+#define HYDRAULIC_STATE_MSG_214 2
 
 // hydraulic movements
 #define MOVE_HALT 0

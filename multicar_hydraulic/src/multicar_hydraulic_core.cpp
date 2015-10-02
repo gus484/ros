@@ -263,7 +263,7 @@ void Hydraulic::callbackCanMessageRaw(const tinycan::CanMsg::ConstPtr& msg)
       case CO_HYDRAULIC_ACK:
         if (msg->data[1] == 0x40)
         {
-          hydraulic_states[HYDRAULIC_HA_SWK][1] = 0x40;
+          hydraulic_states[HYDRAULIC_STATE_MSG_214][1] = 0x40;
           Ausleger::pre_control_signal = PRE_CONTROL_SIG_ON_ACK;
           printf("pre sig on ack\n");
           if (is_man_ctr)
@@ -279,7 +279,7 @@ void Hydraulic::callbackCanMessageRaw(const tinycan::CanMsg::ConstPtr& msg)
         }
         if (msg->data[1] == 0x00)
         {
-          hydraulic_states[HYDRAULIC_HA_SWK][1] = 0x00;
+          hydraulic_states[HYDRAULIC_STATE_MSG_214][1] = 0x00;
           Ausleger::pre_control_signal = PRE_CONTROL_SIG_OFF_ACK;
           printf("pre sig off ack\n"); 
         }
@@ -440,8 +440,6 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // deactivate pwm
         cmsg.id = 0x314;
         cmsg.len = 2;
-        //cmsg.data[0] = 0x00; // pwm thrust left on
-        //cmsg.data[1] = 0x02;
         hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] & 0x0C;
         hydraulic_states[HYDRAULIC_NA_VS][1] = 0x02;       
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8); 
@@ -453,8 +451,6 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // activate pwm left
         cmsg.id = 0x314;
         cmsg.len = 2;
-        //cmsg.data[0] = 0x10; // pwm thrust left on
-        //cmsg.data[1] = 0x02;
         hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] | 0x10;
         hydraulic_states[HYDRAULIC_NA_VS][1] = 0x02;        
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);
@@ -472,8 +468,6 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // activate pwm right
         cmsg.id = 0x314;
         cmsg.len = 2;
-        //cmsg.data[0] = 0x20; // pwm thrust right on
-        //cmsg.data[1] = 0x02;
         hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] | 0x20;
         hydraulic_states[HYDRAULIC_NA_VS][1] = 0x02;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);    
@@ -493,17 +487,14 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // deactivate hauptarm
         cmsg.id = 0x214;
         cmsg.len = 3;
-        //cmsg.data[1] = 0x40;
-        //cmsg.data[2] = 0x00;
-        hydraulic_states[HYDRAULIC_HA_SWK][2] = hydraulic_states[HYDRAULIC_HA_SWK][2] & 0xC0;
-        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][2] & 0xC0;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,3);
         
         // set pwm value 0
         cmsg.id = 0x394;
         cmsg.len = 8;
-        //cmsg.data[0] = cmsg.data[1] = cmsg.data[2] = cmsg.data[3] =0;
         for (uint8_t i = 0 ; i < 4 ; i++)
           hydraulic_states[HYDRAULIC_HA_NA][i] = 0;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
@@ -515,18 +506,14 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // activate hauptarm up
         cmsg.id = 0x214;
         cmsg.len = 3;
-        //cmsg.data[1] = 0x40;
-        //cmsg.data[2] = 0x02;
-        hydraulic_states[HYDRAULIC_HA_SWK][2] = hydraulic_states[HYDRAULIC_HA_SWK][2] | 0xC2;
-        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][2] | 0xC2;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,3);
 
         // activate pwm up
         cmsg.id = 0x394;
         cmsg.len = 8;
-        //cmsg.data[2] = pwm & 0x00FF;
-        //cmsg.data[3] = pwm >> 8;
         hydraulic_states[HYDRAULIC_HA_NA][2] = pwm & 0x00FF;
         hydraulic_states[HYDRAULIC_HA_NA][3] = pwm >> 8;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
@@ -537,10 +524,8 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // activate hauptarm up
         cmsg.id = 0x214;
         cmsg.len = 3;
-        //cmsg.data[1] = 0x40;
-        //cmsg.data[2] = 0x01;
-        hydraulic_states[HYDRAULIC_HA_SWK][2] = hydraulic_states[HYDRAULIC_HA_SWK][2] | 0xC1;
-        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][2] | 0xC1;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,3);
 
@@ -550,8 +535,6 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         hydraulic_states[HYDRAULIC_HA_NA][0] = pwm & 0x00FF;
         hydraulic_states[HYDRAULIC_HA_NA][1] = pwm >> 8;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
-        //cmsg.data[0] = pwm & 0x00FF;
-        //cmsg.data[1] = pwm >> 8;
         publishCanMessage(&cmsg);
       }
     break;
@@ -639,11 +622,9 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // deactivate schnellwechselkopf
         cmsg.id = 0x214;
         cmsg.len = 3;
-        //cmsg.data[0] = 0x00;
-        hydraulic_states[HYDRAULIC_HA_SWK][0] = 0x00;
-        //hydraulic_states[HYDRAULIC_HA_SWK][1] = hydraulic_states[HYDRAULIC_HA_SWK][1] &  0x40;
-        hydraulic_states[HYDRAULIC_HA_SWK][2] = hydraulic_states[HYDRAULIC_HA_SWK][2] &  0x03;
-        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][0] = 0x00;
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][2] &  0x03;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
       }
@@ -653,10 +634,9 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         cmsg.id = 0x214;
         cmsg.len = 3;
         //cmsg.data[0] = 0x00;
-        hydraulic_states[HYDRAULIC_HA_SWK][0] = 0x00;
-        //hydraulic_states[HYDRAULIC_HA_SWK][1] = hydraulic_states[HYDRAULIC_HA_SWK][1] |  0x48;
-        hydraulic_states[HYDRAULIC_HA_SWK][2] = hydraulic_states[HYDRAULIC_HA_SWK][2] |  0x83;
-        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][0] = 0x00;
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][2] |  0x83;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
 
@@ -674,10 +654,9 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         cmsg.id = 0x214;
         cmsg.len = 3;
         cmsg.data[0] = 0x00;
-        hydraulic_states[HYDRAULIC_HA_SWK][0] = 0x00;
-        //hydraulic_states[HYDRAULIC_HA_SWK][1] = hydraulic_states[HYDRAULIC_HA_SWK][1] |  0x48;
-        hydraulic_states[HYDRAULIC_HA_SWK][2] = hydraulic_states[HYDRAULIC_HA_SWK][2] |  0x43;
-        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][0] = 0x00;
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][2] |  0x43;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
 
@@ -689,6 +668,44 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
       }      
+    break;
+    case NID_Schwenkfix:
+      if (pwm == 0)
+      {
+        // TODO set pwm value
+
+        // umschalten nebenarm/schwenkfix
+        cmsg.id = 0x214;
+        cmsg.len = 3;
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][1] & 0xF7;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+      }
+      if (ausleger[IDX_Schwenkfix].state == MOVE_UP)
+      {
+        // umschalten nebenarm/schwenkfix
+        cmsg.id = 0x214;
+        cmsg.len = 3;
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][1] ^ 0x08;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+
+        // TODO set pwm value
+      }
+      else
+      {
+        // umschalten nebenarm/schwenkfix
+        cmsg.id = 0x214;
+        cmsg.len = 3;
+        hydraulic_states[HYDRAULIC_STATE_MSG_214][2] = hydraulic_states[HYDRAULIC_STATE_MSG_214][1] ^ 0x08;
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_STATE_MSG_214], 3);
+        publishCanMessage(&cmsg);
+        memset(&cmsg.data,0x00,8);
+
+        // TODO set pwm value
+      }
     break;
   }
 }
@@ -724,7 +741,14 @@ int Hydraulic::checkTask()
       }
       else
       {
+        // Schwenkfix kann nicht bewegt werden, wenn Nebenarm bewegt wird
+        if (ausleger[i].node_id == NID_Schwenkfix && ausleger[IDX_Nebenarm].is_moveing)
+          return 0;
+        // Nebenarm kann nicht bewegt werden, wenn Schwenkfix bewegt wird
+        if (ausleger[i].node_id == NID_Nebenarm && ausleger[IDX_Schwenkfix].is_moveing)
+          return 0;
         ROS_INFO_STREAM("New movement for node " << ausleger[i].node_name);
+        // TODO set ROS velocity value as pwm
         // set pwm
         setPWM(ausleger[i].node_id, 1250);
 
