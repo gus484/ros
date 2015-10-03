@@ -13,6 +13,7 @@
 - [Anschauen was abgeht] (https://github.com/gus484/ros#anschauen-was-abgeht)
 - [Aufzeichnung und Wiedergabe von Messungen](https://github.com/gus484/ros#aufzeichnung-und-wiedergabe-von-messungen)
 - [Hydraulik-Steuerung](https://github.com/gus484/ros#hydraulik-steuerung)
+- [Speichern und laden von Planungszuständen (Auslegerpositionen)](https://github.com/gus484/ros#speichern-und-laden-von-planungszuständen-(Auslegerpositionen))
 
 ####Installation des ROS-Systems Version Indigo für Ubuntu 14.04 LTS
 
@@ -208,3 +209,27 @@ Nachdem Rviz gestartet ist, sollte sich der Ausleger entsprechend der Sensorwert
 
 Mittels *Query --> Select Goal State* und der Auswahl *random valid* kann ein gültiger Zustand des Auslegers generiert werden. Man kann so oft auf den Button *Update* klicken, bis eine passable Position gefunden wurde.
 Ein Klick auf den Button *Plan* berechnet die Bewegung zwischen aktueller und neuer Position. Der Button *Execute* führt die Bewegung dann aus indem er die Nachrichten an die *multicat_hydraulic_node* sendet. Der Button *Plan and Execute* vereint beide Schritte mit einem Klick.
+
+#### Speichern und laden von Planungszuständen (Auslegerpositionen)
+
+Es ist möglich im Rviz Zustände des Auslegers in einer DB zu speichern und diese wiederherzustellen. Beispielsweise kann eine Mähposition und eine Fahrposition hinterlegt werden. Dafür muss eine Warehouse DB erreichbar sein. Die *Multicar_moveit_config* Node bringt dafür alle benötigten Komponenten mit. Es muss lediglich ein Pfad zur Datenbank angegeben werden.
+
+Launch-Datei zum Bearbeiten öffnen
+
+`nano /home/carpc/catkin_ws/src/Multicar_moveit_config/launch/warehouse.launch`
+
+Pfad anpassen (erste Zeile durch zweite ersetzen)
+
+`<arg name="moveit_warehouse_database_path" />`
+
+`<arg name="moveit_warehouse_database_path" default="$(find Multicar_moveit_config)/" />`
+
+Starten des Datenbankservers
+
+`roslaunch Multicar_moveit_config warehouse.launch`
+
+Jetzt kann ganz normal die *demo.launch* der *Multicar_moveit_config* Node gestartet werden und im Reiter *Context* der Connect Button zum Verbindungsaufbau mit der DB gedrückt werden.
+
+`roslaunch Multicar_moveit_config demo.launch`
+
+Im Reiter *Stored States* können nun Zustände gespeichert (Save Goal) und Zustände geladen (Set as Goal) werden.
