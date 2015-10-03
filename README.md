@@ -13,7 +13,7 @@
 - [Anschauen was abgeht] (https://github.com/gus484/ros#anschauen-was-abgeht)
 - [Aufzeichnung und Wiedergabe von Messungen](https://github.com/gus484/ros#aufzeichnung-und-wiedergabe-von-messungen)
 - [Hydraulik-Steuerung](https://github.com/gus484/ros#hydraulik-steuerung)
-- [Speichern und laden von Planungszuständen (Auslegerpositionen)](https://github.com/gus484/ros#speichern-und-laden-von-planungszuständen-(Auslegerpositionen))
+- [Speichern und laden von Planungszuständen (Auslegerpositionen)](https://github.com/gus484/ros#speichern-und-laden-von-planungszuständen-auslegerpositionen))
 
 ####Installation des ROS-Systems Version Indigo für Ubuntu 14.04 LTS
 
