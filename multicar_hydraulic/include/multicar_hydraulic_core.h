@@ -41,11 +41,11 @@ namespace hydraulic {
 #define CO_PRE_CONTROL 0x200
 
 #define NID_Hydraulik 20
-#define NID_Schwenkfix 124 // only virtual
+#define NID_Schnellwechselkopf 125 
 #define NID_Nebenarm 126
 #define NID_Hauptarm 127
-#define NID_THRUST 128
-#define NID_Schnellwechselkopf 125 // only virtual
+#define NID_THRUST 128 // only virtual
+#define NID_Schwenkfix 129 // only virtual
 
 #define IDX_Schnellwechselkopf 0
 #define IDX_Nebenarm 1

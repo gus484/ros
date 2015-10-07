@@ -217,6 +217,15 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
         ausleger[IDX_Nebenarm].state = MOVE_UP;
       }
     }
+    // Schnellwechselkopf
+    else if (msg->name[i].compare(std::string("rot_nebenarm_schnellwechselsystem")) == 0)
+    {
+      // convert from rad to mm
+
+      std::cout << "    " << "Velocity soll (real):" << msg->velocity[i] << "m/s" << std::endl;
+      std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
+      return;      
+    }
     // Schwenkfix
     else if (msg->name[i].compare(std::string("rot_schnellwechselsystem_maehkopf")) == 0)
     {
@@ -562,8 +571,8 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         cmsg.id = 0x414;
         cmsg.len = 8;
         cmsg.data[4] = cmsg.data[5] = cmsg.data[6] = cmsg.data[7] = 0x00;
-        //for (uint8_t i = 4 ; i < 8 ; i++)
-        //  hydraulic_states[HYDRAULIC_HA_NA][i] = 0;
+        for (uint8_t i = 4 ; i < 8 ; i++)
+          hydraulic_states[HYDRAULIC_NA_VS][i] = 0;
         //memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
@@ -571,8 +580,6 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // deactivate pwm
         cmsg.id = 0x314;
         cmsg.len = 2;
-        //cmsg.data[0] = 0x00; // pwm thrust left on
-        //cmsg.data[1] = 0x02;
         hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] & 0x30;
         hydraulic_states[HYDRAULIC_NA_VS][1] = 0x02;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);    
@@ -584,19 +591,15 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // activate Nebenarm up
         cmsg.id = 0x314;
         cmsg.len = 2;
-        //cmsg.data[0] = 0x08; // pwm thrust left on
-        //cmsg.data[1] = 0x02;
-        hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] | 0x08;
+        hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] | 0x08; // pwm nebenarm ausfahren
         hydraulic_states[HYDRAULIC_NA_VS][1] = 0x02;
-        //memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);    
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);    
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
 
         // set pwm value
         cmsg.id = 0x414;
         cmsg.len = 8;
-        //cmsg.data[6] = pwm & 0x00FF;
-        //cmsg.data[7] = pwm >> 8;
         hydraulic_states[HYDRAULIC_HA_NA][6] = pwm & 0x00FF;
         hydraulic_states[HYDRAULIC_HA_NA][7] = pwm >> 8;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
@@ -607,19 +610,15 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // activate Nebenarm down
         cmsg.id = 0x314;
         cmsg.len = 2;
-        //cmsg.data[0] = 0x04; // pwm thrust right on
-        cmsg.data[1] = 0x02;
-        hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] | 0x04;
+        hydraulic_states[HYDRAULIC_NA_VS][0] = hydraulic_states[HYDRAULIC_NA_VS][0] | 0x04; // pwm nebenarm einfahren
         hydraulic_states[HYDRAULIC_NA_VS][1] = 0x02;
-        //memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);  
+        memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_NA_VS], 8);  
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
 
         // set pwm value
         cmsg.id = 0x414;
         cmsg.len = 8;
-        //cmsg.data[4] = pwm & 0x00FF;
-        //cmsg.data[5] = pwm >> 8;
         hydraulic_states[HYDRAULIC_HA_NA][4] = pwm & 0x00FF;
         hydraulic_states[HYDRAULIC_HA_NA][5] = pwm >> 8;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
@@ -724,7 +723,7 @@ int Hydraulic::checkTask()
       }
       else
       {
-        ROS_INFO_STREAM("New movement for node " << ausleger[i].node_name);
+        ROS_INFO_STREAM("New movement for node " << ausleger[i].node_name << " id:" << ausleger[i].node_id);
         // set pwm
         setPWM(ausleger[i].node_id, 1250);
 
