@@ -12,6 +12,8 @@
 #include "sensor_msgs/JointState.h"
 
 #define DEBUG_CAN_OUTPUT true
+#define ALLOW_SWK false
+#define ALLOW_SF false
 
 namespace hydraulic {
 
@@ -226,17 +228,19 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
       std::cout << "    " << "Position ist (real):" << ausleger[IDX_Schnellwechselkopf].position << "mm" << std::endl;
-      return;
-      ausleger[IDX_Schnellwechselkopf].target_position = p;
-      ausleger[IDX_Schnellwechselkopf].is_moveing = false;
-      if (p < ausleger[IDX_Schnellwechselkopf].position) // TODO: check direction
+      if (ALLOW_SWK)
       {
-        ausleger[IDX_Schnellwechselkopf].state = MOVE_DOWN;
+        ausleger[IDX_Schnellwechselkopf].target_position = p;
+        ausleger[IDX_Schnellwechselkopf].is_moveing = false;
+        if (p < ausleger[IDX_Schnellwechselkopf].position) // TODO: check direction
+        {
+          ausleger[IDX_Schnellwechselkopf].state = MOVE_DOWN;
+        }
+        else
+        {
+          ausleger[IDX_Schnellwechselkopf].state = MOVE_UP;
+        }
       }
-      else
-      {
-        ausleger[IDX_Schnellwechselkopf].state = MOVE_UP;
-      }     
     }
     // Schwenkfix
     else if (msg->name[i].compare(std::string("rot_schnellwechselsystem_maehkopf")) == 0)
@@ -247,18 +251,19 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
       std::cout << "    " << "Position ist (real):" << ausleger[IDX_Schwenkfix].position << "mm" << std::endl;
-      return;
-      ausleger[IDX_Schwenkfix].target_position = p;
-      ausleger[IDX_Schwenkfix].is_moveing = false;
-      if (p < ausleger[IDX_Schwenkfix].position) // TODO: check direction
+      if (ALLOW_SF)
       {
-        ausleger[IDX_Schwenkfix].state = MOVE_DOWN;
+        ausleger[IDX_Schwenkfix].target_position = p;
+        ausleger[IDX_Schwenkfix].is_moveing = false;
+        if (p < ausleger[IDX_Schwenkfix].position) // TODO: check direction
+        {
+          ausleger[IDX_Schwenkfix].state = MOVE_DOWN;
+        }
+        else
+        {
+          ausleger[IDX_Schwenkfix].state = MOVE_UP;
+        }
       }
-      else
-      {
-        ausleger[IDX_Schwenkfix].state = MOVE_UP;
-      }
-      
     }
   }
   return;
@@ -573,7 +578,7 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         cmsg.len = 8;
         cmsg.data[4] = cmsg.data[5] = cmsg.data[6] = cmsg.data[7] = 0x00;
         for (uint8_t i = 4 ; i < 8 ; i++)
-          hydraulic_states[HYDRAULIC_NA_VS][i] = 0;
+          hydraulic_states[HYDRAULIC_HA_NA][i] = 0;
         //memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
