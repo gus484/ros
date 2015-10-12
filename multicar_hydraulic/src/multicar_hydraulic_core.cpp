@@ -12,7 +12,7 @@
 #include "sensor_msgs/JointState.h"
 
 #define DEBUG_CAN_OUTPUT true
-#define ALLOW_SWK false
+#define ALLOW_SWK true
 #define ALLOW_SF false
 
 namespace hydraulic {
@@ -115,7 +115,8 @@ void Hydraulic::publishJointStateMessage(int nid, uint32_t pos, uint16_t velo)
       e.push_back(1000);
     break;
     case NID_Nebenarm: // max. 29cm
-      p.push_back(-5.0/797.0*pos+ 469937.0/79700.0);
+      //p.push_back(-5.0/797.0*pos+ 469937.0/79700.0);
+      p.push_back(-0.00862502 * pos + 6.10563059);
       s.push_back("rot_hauptarm_nebenarm");
       e.push_back(1000);
     break;
@@ -203,7 +204,8 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
     else if (msg->name[i].compare(std::string("rot_hauptarm_nebenarm")) == 0)
     {
       // convert from rad to mm
-      p = (msg->position[i] - 469937.0/79700.0) / (-5.0/797.0);
+      //p = (msg->position[i] - 469937.0/79700.0) / (-5.0/797.0);
+      p = (-115.941779 * msg->position[i] + 707.897674);
       std::cout << "    " << "Velocity soll (real):" << msg->velocity[i] << "m/s" << std::endl;
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
@@ -234,9 +236,13 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
       std::cout << "    " << "Position ist (real):" << ausleger[IDX_Schnellwechselkopf].position << "mm" << std::endl;
       if (ALLOW_SWK)
       {
+        // Workaround
+        if (!is_man_ctr)
+	  setPWM(NID_Schnellwechselkopf, 0);
+        // -----
         ausleger[IDX_Schnellwechselkopf].target_position = p;
         ausleger[IDX_Schnellwechselkopf].is_moveing = false;
-        if (p < ausleger[IDX_Schnellwechselkopf].position) // TODO: check direction
+        if (p < ausleger[IDX_Schnellwechselkopf].position)
         {
           ausleger[IDX_Schnellwechselkopf].state = MOVE_DOWN;
         }
@@ -657,6 +663,7 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_SWK], 3);
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
+        break;
       }
       if (ausleger[IDX_Schnellwechselkopf].state == MOVE_UP)
       {
@@ -673,8 +680,10 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // set pwm value
         cmsg.id = 0x494;
         cmsg.len = 8;
-        cmsg.data[7] = pwm & 0x00FF;
-        cmsg.data[8] = pwm >> 8;
+        cmsg.data[4] = 0x00;
+        cmsg.data[5] = 0x00;
+        cmsg.data[6] = pwm & 0x00FF;
+        cmsg.data[7] = pwm >> 8;
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
       }
@@ -692,8 +701,10 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // set pwm value
         cmsg.id = 0x494;
         cmsg.len = 8;
-        cmsg.data[5] = pwm & 0x00FF;
-        cmsg.data[6] = pwm >> 8;
+        cmsg.data[4] = pwm & 0x00FF;
+        cmsg.data[5] = pwm >> 8;
+        cmsg.data[6] = 0x00;
+        cmsg.data[7] = 0x00;
         publishCanMessage(&cmsg);
         memset(&cmsg.data,0x00,8);
       }      
