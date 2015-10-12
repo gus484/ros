@@ -208,6 +208,10 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
       std::cout << "    " << "Position ist (real):" << ausleger[IDX_Nebenarm].position << "mm" << std::endl;
+      // Workaround
+      if (!is_man_ctr)
+		setPWM(NID_Nebenarm, 0);
+      // -----
       ausleger[IDX_Nebenarm].target_position = p;
       ausleger[IDX_Nebenarm].is_moveing = false;
       if (p < ausleger[IDX_Nebenarm].position)
@@ -606,6 +610,8 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         // set pwm value
         cmsg.id = 0x414;
         cmsg.len = 8;
+        hydraulic_states[HYDRAULIC_HA_NA][4] = 0x00;
+        hydraulic_states[HYDRAULIC_HA_NA][5] = 0x00;
         hydraulic_states[HYDRAULIC_HA_NA][6] = pwm & 0x00FF;
         hydraulic_states[HYDRAULIC_HA_NA][7] = pwm >> 8;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
@@ -627,6 +633,8 @@ void Hydraulic::setPWM(uint8_t nid, uint16_t pwm)
         cmsg.len = 8;
         hydraulic_states[HYDRAULIC_HA_NA][4] = pwm & 0x00FF;
         hydraulic_states[HYDRAULIC_HA_NA][5] = pwm >> 8;
+        hydraulic_states[HYDRAULIC_HA_NA][6] = 0x00;
+        hydraulic_states[HYDRAULIC_HA_NA][7] = 0x00;
         memcpy(&cmsg.data,hydraulic_states[HYDRAULIC_HA_NA], 8);
         publishCanMessage(&cmsg);
       }
