@@ -109,20 +109,27 @@ void Hydraulic::publishJointStateMessage(int nid, uint32_t pos, uint16_t velo)
       s.push_back("trans_schlitten");
       e.push_back(0);
     break;
-    case NID_Hauptarm: // 46.450000 cm
-      p.push_back(-37699.0/8246000.0*pos + 2321764533.0/412300000.0);
+    case NID_Hauptarm: // hauptarm.ods
+      tmp = -0.003853211*pos + 5.4794495413;
+      if (tmp < 3.68) tmp = 3.68;
+      if (tmp > 4.94) tmp = 4.94;
+      p.push_back(tmp);
       s.push_back("rot_dreharm_hauptarm");
       e.push_back(1000);
     break;
-    case NID_Nebenarm: // max. 29cm
-      //p.push_back(-5.0/797.0*pos+ 469937.0/79700.0);
-      p.push_back(-0.00862502 * pos + 6.10563059);
+    case NID_Nebenarm: // nebenarm.ods
+      tmp = -0.0086239216 * pos + 6.1126003922;
+      if (tmp < 3.51) tmp = 3.51;
+      if (tmp > 5.72) tmp = 5.72;
+      p.push_back(tmp);
       s.push_back("rot_hauptarm_nebenarm");
       e.push_back(1000);
     break;
-    case NID_Schnellwechselkopf: // TODO nicht getestet!!!
-      //p.push_back((ceilf(59.0/4680.0*pos + 5777.0/4680.0)*100)/ 100);
-      p.push_back(59.0/4680.0*pos + 5777.0/4680.0);
+    case NID_Schnellwechselkopf: // swk.ods
+      tmp = 0.0113780769 * pos + 1.2488742308;
+      if (tmp < 1.80) tmp = 1.80;
+      if (tmp > 4.76) tmp = 4.76;
+      p.push_back(tmp);
       s.push_back("rot_nebenarm_schnellwechselsystem");
       e.push_back(1000);
     break;
@@ -183,8 +190,10 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
     // Hauptarm
     else if (msg->name[i].compare(std::string("rot_dreharm_hauptarm")) == 0)
     {
-      // convert from rad to mm
-      p = (msg->position[i] - 2321764533.0/412300000.0) / (-37699.0/8246000.0);
+      // convert from rad to mm hauptarm.ods
+      p = -259.5238095238 * msg->position[i] + 1422.0476190476;
+      if (p > 467.0) p = 467.0;
+      if (p < 140.0) p = 140.0;
       std::cout << "    " << "Velocity soll (real):" << msg->velocity[i] << "m/s" << std::endl;
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
@@ -203,9 +212,10 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
     // Nebenarm
     else if (msg->name[i].compare(std::string("rot_hauptarm_nebenarm")) == 0)
     {
-      // convert from rad to mm
-      //p = (msg->position[i] - 469937.0/79700.0) / (-5.0/797.0);
-      p = (-115.941779 * msg->position[i] + 707.897674);
+      // convert from rad to mm nebenarm.ods
+      p = (-115.9565276704 * msg->position[i] + 708.7959165113);
+      if (p > 301.0) p = 301.0;
+      if (p <  46.0) p =  46.0;
       std::cout << "    " << "Velocity soll (real):" << msg->velocity[i] << "m/s" << std::endl;
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
@@ -228,8 +238,10 @@ void Hydraulic::callbackRobotTrajectory(const sensor_msgs::JointState::ConstPtr&
     // Schnellwechselkopf
     else if (msg->name[i].compare(std::string("rot_nebenarm_schnellwechselsystem")) == 0)
     {
-      // convert from rad to mm
-      p = (62.7520682743 * msg->position[i] -71.7101668527);
+      // convert from rad to mm swk.ods
+      p = (87.8883142345 * msg->position[i] - 109.7614508332);
+      if (p > 309.0) p = 309.0;
+      if (p <  49.0) p =  49.0;
       std::cout << "    " << "Velocity soll (real):" << msg->velocity[i] << "m/s" << std::endl;
       std::cout << "    " << "Position (ROS):" << msg->position[i] << std::endl;
       std::cout << "    " << "Position (real):" << p << "mm" << std::endl;
@@ -359,7 +371,6 @@ void Hydraulic::callbackCanMessageRaw(const tinycan::CanMsg::ConstPtr& msg)
         int16_t v = msg->data[4] + (msg->data[5] << 8);
         ausleger[node_id-125].setValues(pos,v);
         if (DEBUG_CAN_OUTPUT)  ausleger[node_id-125].printValues();
-        //if (node_id == 127)  ausleger[node_id-125].printValues();
         publishJointStateMessage(node_id, ausleger[node_id-125].position, ausleger[node_id-125].velocity);
       }
       break;

@@ -194,8 +194,13 @@
     <!--der Hauptarm haengt nach unten in Standardconfig
         die Winkel laut CAD Analyse: 03_Dreharm_Hauptarm.pdf
         lower = 53Grad = 0.92455rad und +2Pi weil neg. in MoveIt nicht so funktioniert
-        upper = 161Grad = 2.8055rad und +2Pi weil neg. in MoveIt nicht so funktioniert -->
-    <limit effort="1000.0" lower="3.4746" upper="5.3586" velocity="0.5"/>
+        upper = 161Grad = 2.8055rad und +2Pi weil neg. in MoveIt nicht so funktioniert 
+        
+        Messungen:
+        Min   77 Grad bei 140 mm = 1,343903524 rad + 2Pi
+        Max: 149 Grad bei 467 mm = 2,600540585 rad + 2Pi        
+        -->
+    <limit effort="1000.0" lower="3.6826" upper="4.9392" velocity="0.5"/>
   </joint>
 
 
@@ -222,8 +227,13 @@
     <!--der Nebenarm liegt an Hauptarm an in 0-Stellung
         die Winkel laut CAD Analyse: 04_Hauptarm_Nebenarm.pdf
         lower = 26Grad = 0.45355rad und Minus wegen Rechte Hand System
-        upper = 159Grad = 2.77366rad und Minus wegen Rechte Hand System -->
-    <limit effort="1000.0" lower="3.5095" upper="5.82963" velocity="0.5"/>
+        upper = 159Grad = 2.77366rad und Minus wegen Rechte Hand System 
+
+        Messungen:
+        Min   32,5 Grad bei  46 mm = 0,567232007
+        Max: 158,5 Grad bei 301 mm = 2,766346864
+     -->
+    <limit effort="1000.0" lower="3.5168" upper="5.7159" velocity="0.5"/>
   </joint>
 
 
@@ -251,8 +261,13 @@
     	deshalb muss erst mal um 180Grad=3.14rad gedreht werden und dann
         die Winkel laut CAD Analyse: 05_Schnellwechselsystem_Nebenarm.pdf
         lower = 180-88Grad = 1.60488rad
-        upper = 180+81Grad = 4.553	rad -->
-    <limit effort="1000.0" lower="1.60489" upper="4.553" velocity="0.5"/>
+        upper = 180+81Grad = 4.553	rad 
+
+        Messungen:
+        Min  76,5 Grad bei  49 mm = 180 - 76,5 Grad = 1.8064
+        Max: 93,0 Grad bei 309 mm = 180 + 93,0 Grad = 4.7647
+    -->
+    <limit effort="1000.0" lower="1.8064" upper="4.7647" velocity="0.5"/>
   </joint>
 
 
